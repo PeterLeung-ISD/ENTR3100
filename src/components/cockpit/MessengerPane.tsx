@@ -85,20 +85,20 @@ export default function MessengerPane({
 
   return (
     <section className="flex w-full min-h-0 min-w-0 flex-col overflow-hidden border border-cockpit-line bg-cockpit-panel lg:rounded-lg">
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-cockpit-line px-3">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-cockpit-line px-3.5">
         <div className="flex items-center gap-2">
-          <MessageSquare className="h-3.5 w-3.5 text-calm" aria-hidden="true" />
-          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-cockpit-text">
+          <MessageSquare className="h-4 w-4 text-calm" aria-hidden="true" />
+          <h2 className="text-[12px] font-semibold uppercase tracking-widest text-cockpit-text">
             {copy.header}
           </h2>
         </div>
-        <span className="rounded border border-cockpit-line bg-cockpit-elevated px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-cockpit-muted">
+        <span className="rounded border border-cockpit-line bg-cockpit-elevated px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cockpit-muted">
           Teams
         </span>
       </div>
 
       {/* channels */}
-      <div className="scroll-thin flex shrink-0 gap-1 overflow-x-auto border-b border-cockpit-line p-1.5 sm:flex-col sm:gap-1 sm:overflow-visible">
+      <div className="scroll-thin flex shrink-0 gap-1.5 overflow-x-auto border-b border-cockpit-line p-2 sm:flex-col sm:gap-1.5 sm:overflow-visible">
         {npcs.map((npc) => {
           const isActive = npc.id === activeNpc;
           const count = unread[npc.id] ?? 0;
@@ -109,7 +109,7 @@ export default function MessengerPane({
               onClick={() => onSelectNpc(npc.id)}
               aria-current={isActive ? "true" : undefined}
               aria-label={`${npc.name} · ${npc.role} · ${copy.online}${count > 0 ? ` · ${copy.unreadAria(count)}` : ""}`}
-              className={`group flex min-w-[176px] shrink-0 items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition sm:min-w-0 ${
+              className={`group flex min-w-[190px] shrink-0 items-center gap-2.5 rounded-lg border px-2.5 py-2.5 text-left transition sm:min-w-0 sm:py-2 ${
                 isActive
                   ? "border-calm/30 bg-cockpit-elevated"
                   : "border-transparent hover:bg-cockpit-elevated/60"
@@ -117,7 +117,7 @@ export default function MessengerPane({
             >
               <span className="relative shrink-0">
                 <span
-                  className="flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-bold"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border text-[12px] font-bold"
                   style={avatarTone(npc.avatarColor)}
                   aria-hidden="true"
                 >
@@ -131,19 +131,19 @@ export default function MessengerPane({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
                   <span
-                    className={`truncate text-[12px] font-semibold ${
-                      isActive ? "text-cockpit-text" : "text-cockpit-text/90"
+                    className={`truncate text-[13px] font-semibold ${
+                      isActive ? "text-white" : "text-cockpit-text/90"
                     }`}
                   >
                     {npc.name}
                   </span>
                   {count > 0 && (
-                    <span className="tabular-telemetry ml-auto flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-critical-deep px-1 text-[9px] font-bold text-white">
+                    <span className="tabular-telemetry ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-critical-deep px-1 text-[10.5px] font-bold text-white">
                       {count}
                     </span>
                   )}
                 </span>
-                <span className="mt-0.5 block truncate text-[10px] text-cockpit-muted">{npc.role}</span>
+                <span className="mt-0.5 block truncate text-[11.5px] text-cockpit-muted">{npc.role}</span>
               </span>
             </button>
           );
@@ -151,20 +151,18 @@ export default function MessengerPane({
       </div>
 
       {/* active thread header */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-cockpit-line px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-cockpit-line px-3.5 py-2.5">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-unlocked" aria-hidden="true" />
-            <span className="truncate text-[12px] font-semibold text-cockpit-text">
-              {activeProfile.name}
-            </span>
-            <span className="shrink-0 text-[9px] text-cockpit-muted">{copy.online}</span>
+            <span className="h-2 w-2 shrink-0 rounded-full bg-unlocked" aria-hidden="true" />
+            <span className="truncate text-[14px] font-semibold text-white">{activeProfile.name}</span>
+            <span className="shrink-0 text-[10.5px] text-cockpit-muted">{copy.online}</span>
           </div>
-          <div className="mt-0.5 truncate text-[10px] text-cockpit-muted">
+          <div className="mt-0.5 truncate text-[11.5px] text-cockpit-muted">
             {activeProfile.role} · {activeProfile.statusText}
           </div>
         </div>
-        <span className="shrink-0 rounded border border-cockpit-line bg-cockpit-elevated px-1.5 py-0.5 text-[9px] text-cockpit-muted">
+        <span className="shrink-0 rounded border border-cockpit-line bg-cockpit-elevated px-2 py-0.5 text-[10.5px] text-cockpit-muted">
           {activeProfile.department}
         </span>
       </div>
@@ -174,20 +172,20 @@ export default function MessengerPane({
         <button
           type="button"
           onClick={() => onSelectNpc(crossChannel.npcId)}
-          className="flex w-full shrink-0 items-center gap-2 border-b border-calm/25 bg-calm/10 px-3 py-2 text-left transition hover:bg-calm/15"
+          className="flex w-full shrink-0 items-center gap-2 border-b border-calm/25 bg-calm/10 px-3.5 py-2.5 text-left transition hover:bg-calm/15"
         >
-          <BellRing className="h-3.5 w-3.5 shrink-0 text-calm" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate text-[10.5px] font-medium text-calm">
+          <BellRing className="h-4 w-4 shrink-0 text-calm" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-calm">
             {crossChannel.text}
           </span>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-calm" aria-hidden="true" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-calm" aria-hidden="true" />
         </button>
       )}
 
       {/* messages */}
-      <div ref={scrollRef} className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
+      <div ref={scrollRef} className="scroll-thin min-h-0 flex-1 space-y-3.5 overflow-y-auto px-3.5 py-3.5">
         {threads.length === 0 && (
-          <div className="rounded-lg border border-dashed border-cockpit-line bg-cockpit-elevated/40 p-3 text-[11px] leading-relaxed text-cockpit-muted">
+          <div className="rounded-lg border border-dashed border-cockpit-line bg-cockpit-elevated/40 p-3.5 text-[13.5px] leading-relaxed text-cockpit-muted">
             {copy.emptyThread(activeProfile.name)}
           </div>
         )}
@@ -195,7 +193,7 @@ export default function MessengerPane({
         {threads.map((msg) => {
           if (msg.sender === "system") {
             return (
-              <div key={msg.id} className="flex items-center gap-2 text-[10px] text-cockpit-muted">
+              <div key={msg.id} className="flex items-center gap-2 text-[11.5px] text-cockpit-muted">
                 <span className="h-px flex-1 bg-cockpit-line" aria-hidden="true" />
                 <span className="flex items-center gap-1 rounded bg-cockpit-elevated px-2 py-1">
                   <ShieldAlert className="h-3 w-3" aria-hidden="true" />
@@ -212,7 +210,7 @@ export default function MessengerPane({
             <div key={msg.id} className={`flex gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
               {!isUser && (
                 <span
-                  className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold"
+                  className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold"
                   style={avatarTone(profile.avatarColor)}
                   aria-hidden="true"
                 >
@@ -220,7 +218,7 @@ export default function MessengerPane({
                 </span>
               )}
               <div className={`flex max-w-[86%] flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
-                <div className="flex items-center gap-1.5 text-[9px] text-cockpit-muted">
+                <div className="flex items-center gap-1.5 text-[11px] text-cockpit-muted">
                   <span className={isUser ? "text-calm/90" : ""}>
                     {isUser ? copy.you : profile.name}
                   </span>
@@ -233,10 +231,10 @@ export default function MessengerPane({
                   )}
                 </div>
                 <div
-                  className={`whitespace-pre-wrap rounded-xl px-3 py-2 text-[12px] leading-relaxed ${
+                  className={`whitespace-pre-wrap break-words rounded-xl px-3.5 py-2.5 text-base leading-relaxed ${
                     isUser
                       ? "rounded-tr-sm bg-cobalt text-white"
-                      : "rounded-tl-sm border border-cockpit-line bg-cockpit-elevated text-cockpit-text"
+                      : "rounded-tl-sm border border-cockpit-bubble-line bg-cockpit-bubble text-cockpit-text"
                   }`}
                 >
                   {msg.content}
@@ -245,14 +243,14 @@ export default function MessengerPane({
                   <button
                     type="button"
                     onClick={() => onOpenDoc(msg.attachedDocId!)}
-                    className="group flex items-center gap-2 rounded-lg border border-calm/30 bg-calm/10 px-2.5 py-1.5 text-left transition hover:border-calm/60 hover:bg-calm/15"
+                    className="group flex items-center gap-2 rounded-lg border border-calm/30 bg-calm/10 px-3 py-2 text-left transition hover:border-calm/60 hover:bg-calm/15"
                   >
-                    <FileText className="h-3.5 w-3.5 shrink-0 text-calm" aria-hidden="true" />
+                    <FileText className="h-4 w-4 shrink-0 text-calm" aria-hidden="true" />
                     <span className="min-w-0">
-                      <span className="block truncate text-[11px] font-medium text-cockpit-text">
+                      <span className="block truncate text-[12.5px] font-medium text-cockpit-text">
                         {docTitle(msg.attachedDocId)}
                       </span>
-                      <span className="block text-[9px] text-calm/80">{copy.openInCenter}</span>
+                      <span className="block text-[10.5px] text-calm/80">{copy.openInCenter}</span>
                     </span>
                   </button>
                 )}
@@ -262,15 +260,15 @@ export default function MessengerPane({
         })}
 
         {typing && (
-          <div className="flex items-center gap-2 text-[10px] text-cockpit-muted">
+          <div className="flex items-center gap-2 text-[11.5px] text-cockpit-muted">
             <span
-              className="flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-bold"
+              className="flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-bold"
               style={avatarTone(activeProfile.avatarColor)}
               aria-hidden="true"
             >
               {activeProfile.name.slice(0, 1)}
             </span>
-            <span className="flex items-center gap-1 rounded-lg border border-cockpit-line bg-cockpit-elevated px-2.5 py-2">
+            <span className="flex items-center gap-1 rounded-lg border border-cockpit-bubble-line bg-cockpit-bubble px-2.5 py-2">
               <span className="typing-dot" />
               <span className="typing-dot" style={{ animationDelay: "0.15s" }} />
               <span className="typing-dot" style={{ animationDelay: "0.3s" }} />
@@ -281,7 +279,7 @@ export default function MessengerPane({
       </div>
 
       {/* composer */}
-      <div className="shrink-0 border-t border-cockpit-line p-2.5">
+      <div className="shrink-0 border-t border-cockpit-line p-3">
         <div className="rounded-lg border border-cockpit-line bg-cockpit-elevated/60 focus-within:border-cobalt/60">
           <textarea
             ref={textareaRef}
@@ -295,19 +293,19 @@ export default function MessengerPane({
             }}
             rows={2}
             placeholder={copy.placeholder(activeProfile.name)}
-            className="w-full resize-none bg-transparent px-2.5 py-2 text-[12px] text-cockpit-text outline-none placeholder:text-cockpit-muted/70"
+            className="w-full resize-none bg-transparent px-3 py-2.5 text-[15px] leading-relaxed text-cockpit-text outline-none placeholder:text-cockpit-muted/70"
           />
-          <div className="flex items-center justify-between border-t border-cockpit-line px-2 py-1.5">
-            <span className="flex items-center gap-1 text-[9px] text-cockpit-muted">
-              <CornerDownLeft className="h-2.5 w-2.5" aria-hidden="true" /> {copy.enterToSend}
+          <div className="flex items-center justify-between border-t border-cockpit-line px-2.5 py-2">
+            <span className="flex items-center gap-1 text-[10.5px] text-cockpit-muted">
+              <CornerDownLeft className="h-3 w-3" aria-hidden="true" /> {copy.enterToSend}
             </span>
             <button
               type="button"
               onClick={submit}
               disabled={!draft.trim()}
-              className="flex items-center gap-1 rounded-md bg-cobalt px-2.5 py-1 text-[10px] font-semibold text-white transition hover:bg-cobalt-hover disabled:cursor-not-allowed disabled:bg-cockpit-line disabled:text-cockpit-muted"
+              className="flex items-center gap-1.5 rounded-md bg-cobalt px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-cobalt-hover disabled:cursor-not-allowed disabled:bg-cockpit-line disabled:text-cockpit-muted"
             >
-              <Send className="h-3 w-3" aria-hidden="true" />
+              <Send className="h-3.5 w-3.5" aria-hidden="true" />
               {copy.send}
             </button>
           </div>

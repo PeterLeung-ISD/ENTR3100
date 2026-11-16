@@ -159,10 +159,10 @@ export default function TopControlBar({
         >
           <Timer className={`h-4 w-4 shrink-0 ${timerTone}`} aria-hidden="true" />
           <div className="leading-none">
-            <div className={`tabular-telemetry text-xl font-bold tracking-tight ${timerTone}`}>
+            <div className={`tabular-telemetry text-2xl font-extrabold leading-none tracking-tight ${timerTone}`}>
               {formatClock(remaining)}
             </div>
-            <div className="mt-0.5 hidden text-[8.5px] uppercase tracking-widest text-cockpit-muted sm:block">
+            <div className="mt-0.5 hidden text-[9px] uppercase tracking-widest text-cockpit-muted sm:block">
               {copy.timeRemaining}
             </div>
           </div>

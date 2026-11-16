@@ -170,6 +170,12 @@ const documents: WorkDocument[] = [
     summary:
       "高管版本上線簡報：以 92% 滿意度、1.2 秒平均回應速度與 +35% 轉換率提升，主張今晚全量發布。",
     updatedAt: "今日 13:41",
+    metrics: [
+      { label: "宣稱滿意度", value: "92%", note: "Beta 階段綜合滿意度", tone: "positive" },
+      { label: "平均回應速度", value: "1.2s", note: "優於內部目標 2.0 秒", tone: "positive" },
+      { label: "首月轉換率提升（預估）", value: "+35%", note: "內部模型推算，未經 A/B 驗證", tone: "neutral" },
+      { label: "首輪有效問卷", value: "15", note: "自願參與之種子用戶", tone: "neutral" },
+    ],
     trapExplanation:
       "92% 的樣本只有 15 份，且全部來自內部員工——這不是市場驗證，而是「自己人試用」。簡報把 15 份問卷包裝成「Beta 測試綜合滿意度」，並用極小字備註藏在圖表下方。",
     sections: [
@@ -215,6 +221,12 @@ const documents: WorkDocument[] = [
     summary:
       "未經整理的分組測試原始數據：內部員工組與外部真實客戶組的滿意度與幻覺率呈現嚴重分歧。",
     updatedAt: "今日 13:58",
+    metrics: [
+      { label: "內部組滿意度（N=15）", value: "92%", note: "內部員工自願參與", tone: "positive" },
+      { label: "外部組滿意度（N=500）", value: "48%", note: "真實企業客戶重放工單", tone: "negative" },
+      { label: "外部組嚴重幻覺率", value: "41%", note: "每 10 個查詢約 4 個出錯", tone: "negative" },
+      { label: "樣本量落差", value: "33×", note: "15 份 vs 500 份", tone: "neutral" },
+    ],
     trapExplanation:
       "同一份測試、兩套結論：內部員工組樣本小（N=15）且熟悉產品語境，滿意度 92%；外部真實客戶 N=500，滿意度只有 48%、嚴重幻覺率 41%。Marcus 的簡報只引用了前者。",
     sections: [
@@ -233,6 +245,7 @@ const documents: WorkDocument[] = [
             ["外部真實客戶組（第二輪）", "500", "48%", "41%", "1.3 秒"],
             ["全體合併（未加權）", "515", "51%", "40%", "1.2 秒"],
           ],
+          alertValues: ["48%", "41%"],
         },
         highlightWarning:
           "合併計算會嚴重低估風險：15 人的樣本在未加權平均中被放大，令整體滿意度看起來有 51%，實際外部客戶只有 48%。",
@@ -269,6 +282,12 @@ const documents: WorkDocument[] = [
     summary:
       "自動化客服作出錯誤承諾時，企業須無條件履約賠償；建議上線前加入人工覆核攔截與明確免責聲明。",
     updatedAt: "今日 13:52",
+    metrics: [
+      { label: "全量上線賠償敞口", value: "HK$3.69M", note: "41% 幻覺率 × 50,000 名客戶", tone: "negative" },
+      { label: "受影響客戶（估計）", value: "20,500", note: "首月、全量情境", tone: "negative" },
+      { label: "5% 灰度敞口", value: "HK$185K", note: "2,500 名客戶", tone: "neutral" },
+      { label: "加人工覆核後", value: "HK$18K", note: "< 100 名客戶", tone: "positive" },
+    ],
     trapExplanation:
       "AI 客服講錯話，法律上等於公司講錯話——41% 幻覺率乘以 50,000 名客戶，是可直接量化的賠償風險敞口。",
     sections: [
@@ -297,6 +316,7 @@ const documents: WorkDocument[] = [
             ["5% 灰度（2,500 客戶）", "約 1,025", "HK$180", "約 HK$185K"],
             ["加人工覆核攔截（5% 灰度）", "< 100", "HK$180", "約 HK$18K"],
           ],
+          alertValues: ["約 HK$3.69M"],
         },
         highlightWarning:
           "全量上線的預期賠償敞口約為 369 萬港元，遠高於 Q4 市佔率下滑的損失。此數字 Marcus 的簡報完全沒有提及。",

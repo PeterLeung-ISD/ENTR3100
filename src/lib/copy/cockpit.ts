@@ -66,6 +66,8 @@ const zh = {
     metricCritical: "嚴重",
     metricWarnAria: (value: string) => `風險指標 ${value}，偏高`,
     metricCriticalAria: (value: string) => `風險指標 ${value}，嚴重`,
+    kpiTitle: "關鍵指標快照",
+    kpiFootnote: "數值皆取自本文件，可與其他文件交叉比對。",
   },
   decision: {
     activityHeader: "事件動態",
@@ -219,6 +221,8 @@ const en: CockpitCopy = {
     metricCritical: "Severe",
     metricWarnAria: (value: string) => `Risk metric ${value}, elevated`,
     metricCriticalAria: (value: string) => `Risk metric ${value}, severe`,
+    kpiTitle: "Key metrics snapshot",
+    kpiFootnote: "All figures come from this document — cross-check them against the others.",
   },
   decision: {
     activityHeader: "Event feed",

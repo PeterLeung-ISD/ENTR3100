@@ -22,39 +22,39 @@
     "offenders": [
       {
         "tag": "button",
-        "cls": "group flex min-w-[176px] shrink-0 items-center gap-2 rounded-lg border px-2 py-1.5 text-le",
-        "right": 551,
-        "left": 375
-      },
-      {
-        "tag": "span",
-        "cls": "relative shrink-0",
-        "right": 416,
-        "left": 384
-      },
-      {
-        "tag": "span",
-        "cls": "flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-bold",
-        "right": 416,
-        "left": 384
-      },
-      {
-        "tag": "span",
-        "cls": "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-cockpit-panel bg-",
-        "right": 418,
-        "left": 408
+        "cls": "group flex min-w-[190px] shrink-0 items-center gap-2.5 rounded-lg border px-2.5 py-2.5 tex",
+        "right": 405,
+        "left": 215
       },
       {
         "tag": "span",
         "cls": "min-w-0 flex-1",
-        "right": 542,
-        "left": 424
+        "right": 394,
+        "left": 272
       },
       {
         "tag": "span",
         "cls": "flex items-center gap-1.5",
-        "right": 542,
-        "left": 424
+        "right": 394,
+        "left": 272
+      },
+      {
+        "tag": "span",
+        "cls": "mt-0.5 block truncate text-[11.5px] text-cockpit-muted",
+        "right": 394,
+        "left": 272
+      },
+      {
+        "tag": "button",
+        "cls": "group flex min-w-[190px] shrink-0 items-center gap-2.5 rounded-lg border px-2.5 py-2.5 tex",
+        "right": 601,
+        "left": 411
+      },
+      {
+        "tag": "span",
+        "cls": "relative shrink-0",
+        "right": 458,
+        "left": 422
       }
     ],
     "emoji": [],

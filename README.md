@@ -175,12 +175,14 @@ docs/ui-shots/                      # ui-audit 產出的截圖與 audit.json
 | 介面 | 風格 | 底色 / 面板 | 重點色 |
 | --- | --- | --- | --- |
 | 大廳 `/`、報告 `/report/[id]` | **Institutional Light**（機構級、紙本感） | `#F8FAFC` / `#FFFFFF`，邊框 `#E2E8F0` | 深藍 `#0F172A`、鈷藍 CTA `#2563EB` |
-| 作戰室 `/simulation/[id]` | **War-Room Dark**（戰情室、低光） | `#090D16` / `#111622` / `#1A2234`，邊框 `#232D42` | 狀態色 藍 `#38BDF8`、綠 `#10B981`、琥珀 `#F59E0B`、紅 `#EF4444` |
+| 作戰室 `/simulation/[id]` | **War-Room Dark**（戰情室、低光） | `#090D16` / `#111622` / `#1E293B`，邊框 `#334155` | 狀態色 藍 `#38BDF8`、綠 `#10B981`、琥珀 `#F59E0B`、紅 `#EF4444` |
 
 - **字體**：標題 Plus Jakarta Sans（display）、內文 Inter、數字/證書編號 JetBrains Mono + `tabular-nums`（`.tabular-telemetry`），中文全數 fallback 到 Noto Sans TC；全部由 `next/font` 自架，無外部 CDN。
+- **字級層級（可讀性修正包）**：主要對話氣泡、文件內文、表格內容、決策選項一律 16px（`text-base` + `leading-relaxed`）；次要說明文字 13.5–15px；僅表頭／標籤等密集中繼資訊用 12px，**主內容不得出現 `text-xs`**。作戰室次要文字用 `--color-cockpit-muted` `#CBD5E1`（slate-300），不用 slate-400。
+- **數據視覺**：工作文件頂部有「關鍵指標快照」KPI 卡片（`text-2xl xl:text-3xl font-extrabold`），異常數值（如 41% 幻覺率、48% 外部樣本）在表格中以紅色警示膠囊 `bg-red-950/40 text-red-300 border-red-500/40` 呈現，數值欄位一律 `text-base font-bold tabular-telemetry text-white`；倒數計時器 `text-2xl font-extrabold`。
 - **設計 token**：集中在 `src/app/globals.css` 的 `@theme`（`canvas` / `surface` / `hair` / `navy` / `cobalt` / `cockpit-*` / `calm|unlocked|warn|critical`），元件只用 token class，不寫死色碼。
 - **圖示**：一律 lucide-react，無 emoji 當功能圖示；裝飾性圖示 `aria-hidden`，純圖示按鈕必有 `aria-label`。
-- **版面**：作戰室 `h-dvh` 鎖住頁面捲動，三欄各自內部捲動；`<lg` 改成單欄 + 底部三分頁切換。375px 起無橫向溢出。
+- **版面**：作戰室 `h-dvh` 鎖住頁面捲動，三欄 `lg:310/1fr/360`、`xl:350/1fr/410` 各自內部捲動；`<lg` 改成單欄 + 底部三分頁切換。375px 起無橫向溢出。
 - **列印**：`@page A4 landscape`，只有 `.print-certificate-only` 的證書會印出，其餘 `.no-print` 全部隱藏。
 - **無障礙**：`:focus-visible` 2px 鈷藍外框、`prefers-reduced-motion` 時關閉動畫、狀態不只靠顏色（同時有文字標籤與圖示）。
 

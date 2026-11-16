@@ -27,10 +27,14 @@
   /* ── War-Room Dark Surface（即時駕駛艙） ───────────────────────────── */
   --color-cockpit-base: #090d16;
   --color-cockpit-panel: #111622;
-  --color-cockpit-elevated: #1a2234;
-  --color-cockpit-line: #232d42;
+  /* 卡片／氣泡表面與邊框：符合可讀性修正包的 #1E293B / #334155 組合 */
+  --color-cockpit-elevated: #1e293b;
+  --color-cockpit-line: #334155;
+  --color-cockpit-bubble: #1e293b;
+  --color-cockpit-bubble-line: #334155;
   --color-cockpit-text: #f1f5f9;
-  --color-cockpit-muted: #94a3b8;
+  /* 次要說明文字由 #94A3B8（slate-400）提高到 #CBD5E1（slate-300） */
+  --color-cockpit-muted: #cbd5e1;
 
   /* ── Status & Telemetry ────────────────────────────────────────────── */
   --color-calm: #38bdf8;
@@ -75,8 +79,8 @@
 
   --bg-cockpit-base: #090d16;
   --bg-cockpit-panel: #111622;
-  --bg-cockpit-elevated: #1a2234;
-  --border-cockpit: #232d42;
+  --bg-cockpit-elevated: #1e293b;
+  --border-cockpit: #334155;
   --text-primary-dark: #f1f5f9;
   --text-muted-dark: #94a3b8;
 

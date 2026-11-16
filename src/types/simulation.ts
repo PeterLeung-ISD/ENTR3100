@@ -40,12 +40,27 @@ export interface ChatMessage {
 
 export type DocumentType = "deck" | "spreadsheet" | "memo" | "raw_log";
 
+/** KPI 卡片的語氣：positive 是「賣點」，negative 是風險，neutral 是中性數字。 */
+export type MetricTone = "positive" | "negative" | "neutral";
+
+export interface DocumentMetric {
+  label: string;
+  value: string;
+  note?: string;
+  tone?: MetricTone;
+}
+
 export interface DocumentSection {
   heading: string;
   content: string;
   /** 隱藏邏輯漏洞標記（結算覆盤時顯示） */
   highlightWarning?: string;
-  tableData?: { headers: string[]; rows: string[][] };
+  tableData?: {
+    headers: string[];
+    rows: string[][];
+    /** 需要以紅色警示膠囊突顯的異常數值（值需與 rows 內的儲存格字串一致） */
+    alertValues?: string[];
+  };
 }
 
 export interface WorkDocument {
@@ -57,6 +72,8 @@ export interface WorkDocument {
   isLocked: boolean;
   unlockHint?: string;
   summary: string;
+  /** 文件頂部的高對比 KPI 數據卡 */
+  metrics?: DocumentMetric[];
   sections: DocumentSection[];
   /** 結算覆盤時使用的漏洞解析 */
   trapExplanation?: string;

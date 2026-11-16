@@ -196,6 +196,17 @@ export const documentsEn: WorkDocument[] = [
     summary:
       "The executive version of the launch deck: 92% satisfaction, 1.2-second average response time, and a +35% conversion lift, arguing for a full release tonight.",
     updatedAt: "Today 13:41",
+    metrics: [
+      { label: "Claimed satisfaction", value: "92%", note: "Beta-stage overall satisfaction", tone: "positive" },
+      { label: "Average response time", value: "1.2s", note: "Against a 2.0-second internal target", tone: "positive" },
+      {
+        label: "First-month conversion lift (projected)",
+        value: "+35%",
+        note: "Internal model estimate, never A/B tested",
+        tone: "neutral",
+      },
+      { label: "First-round responses", value: "15", note: "Self-selected seed users", tone: "neutral" },
+    ],
     trapExplanation:
       "The 92% rests on just 15 responses, all from internal employees — that is not market validation, it is \"our own people trying it out\". The deck packages 15 questionnaires as \"overall Beta test satisfaction\" and hides the caveat in tiny print beneath the chart.",
     sections: [
@@ -243,6 +254,22 @@ export const documentsEn: WorkDocument[] = [
     summary:
       "Unprocessed raw data from the split test: satisfaction and hallucination rates diverge sharply between the internal employee group and the external real-customer group.",
     updatedAt: "Today 13:58",
+    metrics: [
+      { label: "Internal group satisfaction (N=15)", value: "92%", note: "Volunteer internal employees", tone: "positive" },
+      {
+        label: "External group satisfaction (N=500)",
+        value: "48%",
+        note: "Real enterprise customers replaying tickets",
+        tone: "negative",
+      },
+      {
+        label: "External severe hallucination rate",
+        value: "41%",
+        note: "Roughly 4 in 10 queries go wrong",
+        tone: "negative",
+      },
+      { label: "Sample-size gap", value: "33×", note: "15 responses vs 500", tone: "neutral" },
+    ],
     trapExplanation:
       "One test, two conclusions: the internal employee group is small (N=15) and familiar with the product's language, so satisfaction is 92%; the external real-customer group is N=500, with only 48% satisfaction and a 41% severe-hallucination rate. Marcus's deck cites only the former.",
     sections: [
@@ -268,6 +295,7 @@ export const documentsEn: WorkDocument[] = [
             ["External real-customer group (round two)", "500", "48%", "41%", "1.3 seconds"],
             ["Combined, unweighted", "515", "51%", "40%", "1.2 seconds"],
           ],
+          alertValues: ["48%", "41%"],
         },
         highlightWarning:
           "Combining the numbers badly understates the risk: the 15-person sample is over-weighted in the unweighted average, making overall satisfaction look like 51% when external customers are actually at 48%.",
@@ -326,6 +354,17 @@ export const documentsEn: WorkDocument[] = [
     summary:
       "When an automated support agent makes an incorrect promise, the company must honor it unconditionally and pay compensation; it recommends adding human-review interception and a clear disclaimer before launch.",
     updatedAt: "Today 13:52",
+    metrics: [
+      {
+        label: "Full-release exposure",
+        value: "HK$3.69M",
+        note: "41% hallucination rate × 50,000 customers",
+        tone: "negative",
+      },
+      { label: "Affected customers (est.)", value: "20,500", note: "First month, full release", tone: "negative" },
+      { label: "5% canary exposure", value: "HK$185K", note: "2,500 customers", tone: "neutral" },
+      { label: "With human review", value: "HK$18K", note: "Under 100 customers", tone: "positive" },
+    ],
     trapExplanation:
       "When an AI support agent says the wrong thing, legally the company has said the wrong thing — a 41% hallucination rate multiplied by 50,000 customers is a directly quantifiable compensation exposure.",
     sections: [
@@ -360,6 +399,7 @@ export const documentsEn: WorkDocument[] = [
             ["5% canary (2,500 customers)", "~1,025", "HK$180", "~HK$185K"],
             ["With human-review interception (5% canary)", "< 100", "HK$180", "~HK$18K"],
           ],
+          alertValues: ["~HK$3.69M"],
         },
         highlightWarning:
           "The expected compensation exposure of a full release is roughly HK$3.69 million, far higher than the loss from a Q4 market-share decline. Marcus's deck does not mention this number at all.",

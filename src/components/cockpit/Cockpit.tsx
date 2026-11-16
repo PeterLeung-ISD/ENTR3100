@@ -621,7 +621,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
         onRestart={restart}
       />
 
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-2 p-2 pb-16 lg:grid-cols-[280px_minmax(0,1fr)_340px] lg:pb-2 xl:grid-cols-[300px_minmax(0,1fr)_360px]">
+      <main className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 p-2.5 pb-16 lg:grid-cols-[310px_minmax(0,1fr)_360px] lg:gap-3 lg:pb-3 xl:grid-cols-[350px_minmax(0,1fr)_410px]">
         <div className={`${mobilePane === "chat" ? "flex" : "hidden"} scroll-thin min-h-0 min-w-0 overflow-y-auto lg:flex`}>
           <MessengerPane
             npcs={scenario.npcs}
@@ -692,7 +692,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
                 onClick={() => setMobilePane(tab.key)}
                 aria-current={active ? "page" : undefined}
                 aria-label={tab.badge > 0 ? tab.badgeAria : tab.label}
-                className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md text-[10px] font-medium transition ${
+                className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md text-[11.5px] font-medium transition ${
                   active ? "text-calm" : "text-cockpit-muted hover:text-cockpit-text"
                 }`}
               >
@@ -746,22 +746,22 @@ export default function Cockpit({ scenario }: CockpitProps) {
               </span>
             </div>
             <div className="max-h-[70dvh] overflow-y-auto scroll-thin px-5 py-4">
-              <h1 className="text-[18px] font-bold leading-snug text-cockpit-text">
+              <h1 className="text-[20px] font-bold leading-snug text-cockpit-text">
                 {scenario.summary.title}
               </h1>
-              <p className="mt-1 text-[11px] text-cockpit-muted">{scenario.studentRole}</p>
-              <p className="mt-3 whitespace-pre-wrap text-[12px] leading-relaxed text-cockpit-text/85">
+              <p className="mt-1 text-[12.5px] text-cockpit-muted">{scenario.studentRole}</p>
+              <p className="mt-3 whitespace-pre-wrap text-[14px] leading-relaxed text-cockpit-text/85">
                 {scenario.openingBrief}
               </p>
 
-              <div className="mt-4 grid grid-cols-2 gap-1.5">
+              <div className="mt-4 grid grid-cols-2 gap-2">
                 {scenario.npcs.map((npc) => (
                   <div
                     key={npc.id}
-                    className="flex items-center gap-2 rounded-lg border border-cockpit-line bg-cockpit-elevated/60 px-2 py-1.5"
+                    className="flex items-center gap-2 rounded-lg border border-cockpit-line bg-cockpit-elevated/60 px-2.5 py-2"
                   >
                     <span
-                      className="flex h-6 w-6 items-center justify-center rounded-full border text-[10px] font-bold"
+                      className="flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-bold"
                       style={{
                         backgroundColor: `${npc.avatarColor}1f`,
                         color: npc.avatarColor,
@@ -772,20 +772,20 @@ export default function Cockpit({ scenario }: CockpitProps) {
                       {npc.name.slice(0, 1)}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-[11px] font-medium text-cockpit-text">{npc.name}</span>
-                      <span className="block truncate text-[9px] text-cockpit-muted">{npc.role}</span>
+                      <span className="block truncate text-[12.5px] font-medium text-cockpit-text">{npc.name}</span>
+                      <span className="block truncate text-[11px] text-cockpit-muted">{npc.role}</span>
                     </span>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 space-y-1.5 rounded-lg border border-warn/25 bg-warn/[0.07] px-3 py-2.5">
-                <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-warn/90">
-                  <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+              <div className="mt-4 space-y-2 rounded-lg border border-warn/25 bg-warn/[0.07] px-3 py-2.5">
+                <p className="flex items-start gap-1.5 text-[12.5px] leading-relaxed text-warn/90">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {copy.shell.introNoticeData}
                 </p>
-                <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-warn/90">
-                  <Clock3 className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                <p className="flex items-start gap-1.5 text-[12.5px] leading-relaxed text-warn/90">
+                  <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {copy.shell.introNoticeTimeout}
                 </p>
               </div>

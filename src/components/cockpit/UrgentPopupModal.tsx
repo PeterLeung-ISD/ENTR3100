@@ -120,10 +120,10 @@ export default function UrgentPopupModal({
           <span className="truncate text-[9.5px] text-cockpit-muted">{copy.footer}</span>
         </div>
 
-        <h2 id={titleId} className="mt-3 text-[15px] font-bold leading-snug text-cockpit-text">
+        <h2 id={titleId} className="mt-3 text-[17px] font-bold leading-snug text-cockpit-text">
           {title}
         </h2>
-        <p className="mt-1.5 whitespace-pre-wrap rounded-lg border border-cockpit-line bg-cockpit-elevated/60 px-3 py-2.5 text-[12px] leading-relaxed text-cockpit-muted">
+        <p className="mt-1.5 whitespace-pre-wrap rounded-lg border border-cockpit-line bg-cockpit-elevated/60 px-3 py-2.5 text-[14px] leading-relaxed text-cockpit-text/85">
           {prompt}
         </p>
 
@@ -139,7 +139,7 @@ export default function UrgentPopupModal({
           }}
           rows={3}
           placeholder={copy.placeholder}
-          className="mt-3 w-full resize-none rounded-lg border border-cockpit-line bg-cockpit-elevated px-3 py-2 text-[12px] leading-relaxed text-cockpit-text outline-none transition placeholder:text-cockpit-muted/70 focus:border-critical/60"
+          className="mt-3 w-full resize-none rounded-lg border border-cockpit-line bg-cockpit-elevated px-3 py-2.5 text-[15px] leading-relaxed text-cockpit-text outline-none transition placeholder:text-cockpit-muted/70 focus:border-critical/60"
         />
 
         <div className="mt-3 flex items-center gap-2">
@@ -149,14 +149,14 @@ export default function UrgentPopupModal({
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-lg border border-cockpit-line px-3 py-2 text-[11px] font-medium text-cockpit-muted transition hover:border-cockpit-muted/50 hover:text-cockpit-text"
+            className="rounded-lg border border-cockpit-line px-3.5 py-2 text-[13px] font-medium text-cockpit-muted transition hover:border-cockpit-muted/50 hover:text-cockpit-text"
           >
             {copy.dismiss}
           </button>
           <button
             type="button"
             onClick={() => onSubmit(text)}
-            className="flex items-center gap-1.5 rounded-lg bg-critical-deep px-3.5 py-2 text-[11px] font-bold text-white transition hover:bg-critical"
+            className="flex items-center gap-1.5 rounded-lg bg-critical-deep px-4 py-2.5 text-[13px] font-bold text-white transition hover:bg-critical"
           >
             <Send className="h-3.5 w-3.5" aria-hidden="true" />
             {copy.replyNow}
