@@ -70,16 +70,16 @@ export function PreSimGuideModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[65] flex items-end justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-md sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-[65] flex items-center justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-md sm:p-6">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={t.title}
         tabIndex={-1}
-        className="animate-pop my-auto w-full max-w-2xl rounded-2xl border border-cockpit-line bg-cockpit-panel p-5 text-cockpit-text shadow-2xl outline-none sm:p-7"
+        className="animate-pop my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-cockpit-line bg-cockpit-panel text-cockpit-text shadow-2xl outline-none sm:max-h-[calc(100dvh-3rem)]"
       >
-        <div className="flex items-start gap-3">
+        <div className="flex shrink-0 items-start gap-3 px-5 pt-5 sm:px-7 sm:pt-6">
           <span
             className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-calm/40 bg-calm/10 text-calm"
             aria-hidden="true"
@@ -105,7 +105,7 @@ export function PreSimGuideModal({
           ) : null}
         </div>
 
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex shrink-0 items-center gap-2 px-5 sm:px-7">
           <span className="inline-flex items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2.5 py-1 text-[12px] font-semibold text-warn">
             <Timer size={12} aria-hidden="true" />
             {t.pausedBanner}
@@ -122,7 +122,7 @@ export function PreSimGuideModal({
           </div>
         </div>
 
-        <div className="mt-5">
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-4 sm:px-7">
           {step === 0 ? (
             <div>
               <p className="text-[12.5px] font-semibold uppercase tracking-wide text-cockpit-muted">
@@ -254,7 +254,7 @@ export function PreSimGuideModal({
           ) : null}
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-cockpit-line pt-4">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-cockpit-line px-5 py-4 sm:px-7">
           <button
             type="button"
             onClick={backOrSkip}

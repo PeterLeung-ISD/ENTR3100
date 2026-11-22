@@ -607,10 +607,12 @@ export default function Cockpit({ scenario }: CockpitProps) {
       if (!auto) {
         if (!decision) {
           setError(copyRef.current.validation.decisionRequired);
+          pushToast(copyRef.current.validation.decisionRequired, "warn");
           return;
         }
         if (rationale.trim().length < 12) {
           setError(copyRef.current.validation.rationaleTooShort(12));
+          pushToast(copyRef.current.validation.rationaleTooShort(12), "warn");
           return;
         }
       }
@@ -806,6 +808,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
             rationale={rationale}
             onRationaleChange={setRationale}
             onSubmit={() => void submitDecision(false)}
+            onInvalid={() => void submitDecision(false)}
             submitting={submitting}
             error={error}
             remaining={remaining}
@@ -913,12 +916,15 @@ export default function Cockpit({ scenario }: CockpitProps) {
         </div>
       )}
 
-      {/* toasts */}
-      <div className="pointer-events-none fixed bottom-20 right-3 z-[60] flex w-[min(300px,86vw)] flex-col gap-1.5 lg:bottom-4 lg:right-4">
+      {/* toasts：固定於頂部工具列下方，且滑鼠事件穿透，避免遮擋簽核按鈕等互動元件 */}
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed right-3 top-16 z-[60] flex w-[min(300px,86vw)] flex-col gap-1.5 lg:right-4 lg:top-[4.25rem]"
+      >
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`animate-slide-in pointer-events-auto flex items-start gap-2 rounded-lg border px-3 py-2 text-[11px] leading-snug shadow-xl ${
+            className={`animate-slide-in pointer-events-none flex items-start gap-2 rounded-lg border px-3 py-2 text-[11px] leading-snug shadow-xl ${
               toast.tone === "success"
                 ? "border-unlocked/35 bg-cockpit-elevated text-unlocked"
                 : toast.tone === "warn"
@@ -938,7 +944,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
               type="button"
               onClick={() => setToasts((prev) => prev.filter((item) => item.id !== toast.id))}
               aria-label={copy.shell.dismissToast}
-              className="shrink-0 text-cockpit-muted transition hover:text-cockpit-text"
+              className="pointer-events-auto shrink-0 text-cockpit-muted transition hover:text-cockpit-text"
             >
               <X className="h-3 w-3" aria-hidden="true" />
             </button>

@@ -35,6 +35,8 @@ interface DecisionPaneProps {
   rationale: string;
   onRationaleChange: (value: string) => void;
   onSubmit: () => void;
+  /** 點擊提交但條件未滿足時呼叫，讓父層顯示具體的驗證訊息（不靜默）。 */
+  onInvalid?: () => void;
   submitting: boolean;
   error: string | null;
   remaining: number;
@@ -64,6 +66,7 @@ export default function DecisionPane({
   rationale,
   onRationaleChange,
   onSubmit,
+  onInvalid,
   submitting,
   error,
   remaining,
@@ -71,7 +74,10 @@ export default function DecisionPane({
   const { c } = useLocale();
   const copy = c.cockpit.decision;
   const [confirming, setConfirming] = useState(false);
-  const canSubmit = Boolean(decision) && rationale.trim().length >= 12 && !submitting;
+  const rationaleLength = rationale.trim().length;
+  const missingDecision = !decision;
+  const rationaleTooShort = rationaleLength < 12;
+  const canSubmit = !missingDecision && !rationaleTooShort && !submitting;
 
   const pressureTone =
     pressure >= 70
@@ -195,7 +201,7 @@ export default function DecisionPane({
           })}
         </div>
 
-        <div className="shrink-0 border-t border-cockpit-line p-3">
+        <div className="relative shrink-0 border-t border-cockpit-line p-3">
           <textarea
             value={rationale}
             onChange={(event) => onRationaleChange(event.target.value)}
@@ -204,72 +210,96 @@ export default function DecisionPane({
             className="w-full resize-none rounded-lg border border-cockpit-line bg-cockpit-elevated/60 px-3 py-2.5 text-[15px] leading-relaxed text-cockpit-text outline-none transition placeholder:text-cockpit-muted/70 focus:border-cobalt/60"
           />
           <div className="mt-1.5 flex items-center justify-between gap-2 text-[10.5px] text-cockpit-muted">
-            <span className="tabular-telemetry">{copy.charCount(rationale.trim().length)}</span>
+            <span
+              className={`tabular-telemetry ${rationaleTooShort ? "text-warn" : "text-unlocked"}`}
+            >
+              {copy.charCount(rationaleLength)}
+            </span>
             <span className="truncate text-right">{copy.rationaleScoring}</span>
           </div>
 
           {error && (
-            <p className="mt-2 flex items-start gap-1.5 rounded border border-critical/30 bg-critical/10 px-2.5 py-2 text-[12.5px] leading-snug text-critical">
+            <p
+              role="alert"
+              className="mt-2 flex items-start gap-1.5 rounded border border-critical/40 bg-critical/10 px-2.5 py-2 text-[13px] leading-snug text-critical"
+            >
               <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               {error}
             </p>
           )}
 
-          {confirming && !submitting ? (
-            <div
-              role="alertdialog"
-              aria-label={copy.confirmAria}
-              className="mt-2 rounded-lg border border-cobalt/50 bg-cobalt/10 p-3"
-            >
-              <p className="flex items-start gap-1.5 text-[13.5px] font-semibold leading-snug text-cockpit-text">
-                <ShieldQuestionMark className="mt-px h-4 w-4 shrink-0 text-cobalt" aria-hidden="true" />
-                {copy.confirmTitle}
-              </p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-cockpit-muted">{copy.confirmBody}</p>
-              <div className="mt-2.5 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirming(false)}
-                  className="flex-1 rounded-md border border-cockpit-line bg-cockpit-elevated px-2 py-2 text-[12.5px] font-semibold text-cockpit-muted transition hover:text-cockpit-text"
-                >
-                  {copy.confirmCancel}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirming(false);
-                    onSubmit();
-                  }}
-                  className="flex flex-1 items-center justify-center gap-1 rounded-md bg-cobalt px-2 py-2 text-[12.5px] font-bold text-white transition hover:bg-cobalt-hover"
-                >
-                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                  {copy.confirmSubmit}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (!canSubmit) return;
-                setConfirming(true);
-              }}
-              disabled={!canSubmit}
-              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg bg-cobalt py-3 text-[14px] font-bold text-white transition hover:bg-cobalt-hover disabled:cursor-not-allowed disabled:bg-cockpit-line disabled:text-cockpit-muted"
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Send className="h-4 w-4" aria-hidden="true" />
-              )}
-              {submitting ? copy.submitting : copy.submit}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (submitting) return;
+              if (!canSubmit) {
+                setConfirming(false);
+                onInvalid?.();
+                return;
+              }
+              setConfirming(true);
+            }}
+            aria-disabled={!canSubmit || submitting}
+            className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-lg py-3 text-[14px] font-bold text-white transition ${
+              !canSubmit
+                ? "bg-cockpit-line text-cockpit-muted hover:bg-cockpit-elevated"
+                : "bg-cobalt hover:bg-cobalt-hover"
+            } ${submitting ? "cursor-progress opacity-80" : ""}`}
+          >
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="h-4 w-4" aria-hidden="true" />
+            )}
+            {submitting ? copy.submitting : copy.submit}
+          </button>
 
           <p className="mt-2 flex items-center justify-center gap-1 text-center text-[10.5px] text-cockpit-muted">
             <CircleDollarSign className="h-3 w-3" aria-hidden="true" />
             {copy.remainingMinutes(Math.max(0, Math.ceil(remaining / 60)))}
           </p>
+
+          {confirming && !submitting ? (
+            <>
+              <div
+                className="absolute inset-0 z-10 rounded-b-lg bg-cockpit-base/70 backdrop-blur-[1px]"
+                aria-hidden="true"
+              />
+              <div
+                role="alertdialog"
+                aria-label={copy.confirmAria}
+                className="absolute inset-x-2 bottom-2 z-20 rounded-lg border border-cobalt/60 bg-cockpit-panel p-3 shadow-2xl"
+              >
+                <p className="flex items-start gap-1.5 text-[13.5px] font-semibold leading-snug text-cockpit-text">
+                  <ShieldQuestionMark className="mt-px h-4 w-4 shrink-0 text-cobalt" aria-hidden="true" />
+                  {copy.confirmTitle}
+                </p>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-cockpit-muted">
+                  {copy.confirmBody}
+                </p>
+                <div className="mt-2.5 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(false)}
+                    className="flex-1 rounded-md border border-cockpit-line bg-cockpit-elevated px-2 py-2 text-[12.5px] font-semibold text-cockpit-muted transition hover:text-cockpit-text"
+                  >
+                    {copy.confirmCancel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirming(false);
+                      onSubmit();
+                    }}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-md bg-cobalt px-2 py-2 text-[12.5px] font-bold text-white transition hover:bg-cobalt-hover"
+                  >
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                    {copy.confirmSubmit}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </aside>

@@ -13,7 +13,8 @@
     "ui:audit": "node scripts/ui-audit.mjs",
     "ui:ai": "node scripts/ui-ai-check.mjs",
     "ui:guide": "node scripts/ui-guide-check.mjs",
-    "ui:report": "node scripts/ui-report-check.mjs"
+    "ui:report": "node scripts/ui-report-check.mjs",
+    "ui:submit": "node scripts/ui-submit-check.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.73.0",

@@ -58,9 +58,14 @@ node scripts/e2e-check.mjs http://localhost:4310  # 也可以指定別的埠
 ```bash
 node scripts/ui-guide-check.mjs    # 21 項：導覽自動彈出、倒數暫停、3 步驟、開始後計時、Rubric 開關
 node scripts/ui-report-check.mjs   # 20 項：升等指南、遺漏步驟、Rubric 對照表展開與「你目前在此」標記、證書列印範圍
+node scripts/ui-submit-check.mjs   # 14 項：矮視窗可完成導覽、未填寫提交有提示、確認面板可點、送出後跳轉報告、行動版流程
 ```
 
-兩者都用 headless Edge 以 CDP 實際點擊驗證，並把截圖寫到 `docs/ui-shots/`。
+三者都用 headless Edge 以 CDP 實際點擊驗證，並把截圖寫到 `docs/ui-shots/`。
+
+> **提交簽核的兩道防線**：`ui-submit-check.mjs` 會用真實滑鼠事件點擊「提交簽核並結束模擬」，
+> 若按鈕被任何浮層（例如右下角通知）遮擋就會直接失敗——這正是本專案曾經發生的問題，
+> 現在通知已改為 `pointer-events-none` 並移到頂部工具列下方。
 
 ### 對話介面自檢
 
@@ -229,6 +234,7 @@ scripts/      e2e-check.mjs         # 端到端自檢（中英文共 69 項）
               ui-ai-check.mjs       # 對話介面互動自檢（25 項，headless Edge）
               ui-guide-check.mjs    # 行前導覽 + 倒數暫停 + Rubric 開關（21 項）
               ui-report-check.mjs   # 升等指南 / 遺漏步驟 / Rubric 對照表 / 列印範圍（20 項）
+              ui-submit-check.mjs   # 提交簽核按鈕不被遮擋、驗證提示、送出跳轉（14 項）
               ui-audit.mjs          # 版面/色彩/圖示稽核 + 截圖（headless Edge）
               clean.mjs             # 清快取（.next / .pnpm-store）
 docs/ui-shots/                      # ui-audit 與各自檢腳本產出的截圖與 audit.json
