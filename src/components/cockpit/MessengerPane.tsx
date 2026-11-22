@@ -5,7 +5,7 @@ import {
   BellRing,
   ChevronRight,
   CornerDownLeft,
-  FileText,
+  FileLock2,
   MessageSquare,
   Send,
   ShieldAlert,
@@ -20,6 +20,7 @@ interface MessengerPaneProps {
   unread: Record<string, number>;
   typing: boolean;
   documents: WorkDocument[];
+  unlockedDocIds: string[];
   onSelectNpc: (npcId: NpcId) => void;
   onSend: (text: string) => void;
   onOpenDoc: (docId: string) => void;
@@ -36,6 +37,7 @@ export default function MessengerPane({
   unread,
   typing,
   documents,
+  unlockedDocIds,
   onSelectNpc,
   onSend,
   onOpenDoc,
@@ -48,6 +50,7 @@ export default function MessengerPane({
 
   const activeProfile = npcs.find((npc) => npc.id === activeNpc) ?? npcs[0];
   const threads = messages.filter((m) => m.npcId === activeNpc);
+  const suggestions = copy.suggestions[activeNpc] ?? [];
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -77,9 +80,14 @@ export default function MessengerPane({
 
   const submit = () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || typing) return;
     onSend(text);
     setDraft("");
+    textareaRef.current?.focus();
+  };
+
+  const useSuggestion = (text: string) => {
+    setDraft(text);
     textareaRef.current?.focus();
   };
 
@@ -231,7 +239,7 @@ export default function MessengerPane({
                   )}
                 </div>
                 <div
-                  className={`whitespace-pre-wrap break-words rounded-xl px-3.5 py-2.5 text-base leading-relaxed ${
+                  className={`whitespace-pre-wrap break-words rounded-xl px-3.5 py-2.5 text-[15px] leading-relaxed ${
                     isUser
                       ? "rounded-tr-sm bg-cobalt text-white"
                       : "rounded-tl-sm border border-cockpit-bubble-line bg-cockpit-bubble text-cockpit-text"
@@ -243,14 +251,24 @@ export default function MessengerPane({
                   <button
                     type="button"
                     onClick={() => onOpenDoc(msg.attachedDocId!)}
-                    className="group flex items-center gap-2 rounded-lg border border-calm/30 bg-calm/10 px-3 py-2 text-left transition hover:border-calm/60 hover:bg-calm/15"
+                    className="group mt-0.5 flex w-full max-w-sm items-start gap-2.5 rounded-xl border border-emerald-500/60 bg-emerald-950/50 p-3.5 text-left transition hover:border-emerald-400/80 hover:bg-emerald-950/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
                   >
-                    <FileText className="h-4 w-4 shrink-0 text-calm" aria-hidden="true" />
-                    <span className="min-w-0">
-                      <span className="block truncate text-[12.5px] font-medium text-cockpit-text">
-                        {docTitle(msg.attachedDocId)}
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-300">
+                      <FileLock2 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words text-[12.5px] font-semibold leading-snug text-emerald-200">
+                        {copy.secureFileTitle(docTitle(msg.attachedDocId))}
                       </span>
-                      <span className="block text-[10.5px] text-calm/80">{copy.openInCenter}</span>
+                      <span className="mt-1 flex items-center gap-1 text-[11.5px] font-medium text-emerald-300/90">
+                        {copy.openSecureFile}
+                        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+                      </span>
+                      {unlockedDocIds.includes(msg.attachedDocId) ? null : (
+                        <span className="mt-1 block text-[11px] text-emerald-300/70">
+                          {copy.openInCenter}
+                        </span>
+                      )}
                     </span>
                   </button>
                 )}
@@ -260,7 +278,7 @@ export default function MessengerPane({
         })}
 
         {typing && (
-          <div className="flex items-center gap-2 text-[11.5px] text-cockpit-muted">
+          <div className="flex items-center gap-2 text-[12px] text-cockpit-muted" aria-live="polite">
             <span
               className="flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-bold"
               style={avatarTone(activeProfile.avatarColor)}
@@ -273,13 +291,32 @@ export default function MessengerPane({
               <span className="typing-dot" style={{ animationDelay: "0.15s" }} />
               <span className="typing-dot" style={{ animationDelay: "0.3s" }} />
             </span>
-            <span>{copy.typing}</span>
+            <span>{copy.typingName(activeProfile.name)}</span>
           </div>
         )}
       </div>
 
       {/* composer */}
       <div className="shrink-0 border-t border-cockpit-line p-3">
+        {suggestions.length > 0 && (
+          <div
+            role="group"
+            aria-label={copy.suggestionsAria}
+            className="mb-2 flex flex-wrap gap-1.5"
+          >
+            {suggestions.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => useSuggestion(question)}
+                disabled={typing}
+                className="max-w-full rounded-full border border-cockpit-line bg-cockpit-elevated/70 px-2.5 py-1 text-left text-[11.5px] leading-snug text-cockpit-muted transition hover:border-calm/50 hover:bg-cockpit-elevated hover:text-cockpit-text disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="rounded-lg border border-cockpit-line bg-cockpit-elevated/60 focus-within:border-cobalt/60">
           <textarea
             ref={textareaRef}
@@ -293,7 +330,7 @@ export default function MessengerPane({
             }}
             rows={2}
             placeholder={copy.placeholder(activeProfile.name)}
-            className="w-full resize-none bg-transparent px-3 py-2.5 text-[15px] leading-relaxed text-cockpit-text outline-none placeholder:text-cockpit-muted/70"
+            className="min-h-[56px] w-full resize-none bg-transparent px-3 py-2.5 text-[15px] leading-relaxed text-cockpit-text outline-none placeholder:text-cockpit-muted/70"
           />
           <div className="flex items-center justify-between border-t border-cockpit-line px-2.5 py-2">
             <span className="flex items-center gap-1 text-[10.5px] text-cockpit-muted">
@@ -302,7 +339,7 @@ export default function MessengerPane({
             <button
               type="button"
               onClick={submit}
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || typing}
               className="flex items-center gap-1.5 rounded-md bg-cobalt px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-cobalt-hover disabled:cursor-not-allowed disabled:bg-cockpit-line disabled:text-cockpit-muted"
             >
               <Send className="h-3.5 w-3.5" aria-hidden="true" />

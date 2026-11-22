@@ -9,7 +9,11 @@
     "typecheck": "tsc --noEmit",
     "clean": "node scripts/clean.mjs",
     "clean:all": "node scripts/clean.mjs --all",
-    "e2e": "node scripts/e2e-check.mjs"
+    "e2e": "node scripts/e2e-check.mjs",
+    "ui:audit": "node scripts/ui-audit.mjs",
+    "ui:ai": "node scripts/ui-ai-check.mjs",
+    "ui:guide": "node scripts/ui-guide-check.mjs",
+    "ui:report": "node scripts/ui-report-check.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.73.0",

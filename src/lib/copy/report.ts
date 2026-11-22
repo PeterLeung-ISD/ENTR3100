@@ -102,6 +102,47 @@ const zh = {
     badge: "陷阱",
     lesson: "教學重點",
   },
+  /** 教授回饋 1：逐維度升等路線圖 */
+  coaching: {
+    title: "如何從目前等級更進一步",
+    subtitle: "四個能力維度的升等路線圖：先看系統觀察到的行為證據，再照著下一級的做法調整。",
+    scoreLabel: "目前得分",
+    levelLabel: (level: number) => `Level ${level} / 5`,
+    levelProgressAria: (level: number) => `已達 5 個等級中的第 ${level} 級`,
+    evidenceLabel: "系統觀察到的證據",
+    nextLevelLabel: (next: number) => `升至 Level ${next} 的關鍵做法`,
+    topLevelLabel: "已達 Level 5 · 維持頂標的做法",
+  },
+  /** 教授回饋 2：遺漏的關鍵步驟與盲點 */
+  missed: {
+    title: "途中遺漏的關鍵步驟與盲點",
+    subtitle: "標準查證流程中沒有被執行到的環節；每一項都附上下次可以直接照做的修正。",
+    badge: (count: number) => `${count} 項待補`,
+    whyLabel: "為什麼重要",
+    fixLabel: "下次這樣做",
+    category: {
+      verification: "資料查證",
+      stakeholder: "利害關係人",
+      risk_control: "風險控制",
+      communication: "對上溝通",
+    },
+    zeroTitle: "零關鍵遺漏 — 完整執行標準查證流程",
+    zeroBody: "沒有漏掉任何關鍵環節：查證、跨部門確認與風險控管都在時限內完成。",
+    zeroHint: "把這次的流程寫成一頁檢查清單，下次可以直接複製使用。",
+  },
+  /** 教授回饋 3：透明評分標準對照表（權重／等級徽章沿用 c.rubric） */
+  rubricMatrix: {
+    title: "透明評分標準對照表",
+    subtitle: "4 個維度 × 5 個等級的行為標準；你的目前等級已標示，Level 5 就是最高標準。",
+    expand: "展開完整對照表",
+    collapse: "收起對照表",
+    openModal: "查看完整評分標準",
+    bandsLabel: "等級門檻",
+    colLevel: "等級",
+    colRange: "分數區間",
+    colCriteria: "行為標準",
+    dimensionAria: (title: string) => `${title}的等級對照`,
+  },
   certificate: {
     sectionTitle: "能力認證證書",
     editHint: "姓名可直接在證書上修改",
@@ -247,6 +288,51 @@ const en: ReportCopy = {
     subtitle: "Flaws at three levels: document, manager, time pressure",
     badge: "Trap",
     lesson: "Lesson",
+  },
+  /** Professor feedback 1: per-dimension level-up roadmap */
+  coaching: {
+    title: "How to move up from your current level",
+    subtitle:
+      "A level-up roadmap for all four dimensions: start from the behaviour the system observed, then apply the next level's moves.",
+    scoreLabel: "Current score",
+    levelLabel: (level: number) => `Level ${level} / 5`,
+    levelProgressAria: (level: number) => `Level ${level} of 5 reached`,
+    evidenceLabel: "What the system observed",
+    nextLevelLabel: (next: number) => `Key move to reach Level ${next}`,
+    topLevelLabel: "Already at Level 5 — how to hold the top standard",
+  },
+  /** Professor feedback 2: missed steps */
+  missed: {
+    title: "Missed steps & considerations",
+    subtitle:
+      "Gaps in the standard verification workflow — each one comes with a fix you can apply on the next run.",
+    badge: (count: number) => `${count} to close`,
+    whyLabel: "Why it matters",
+    fixLabel: "Do this next time",
+    category: {
+      verification: "Data verification",
+      stakeholder: "Stakeholders",
+      risk_control: "Risk control",
+      communication: "Upward comms",
+    },
+    zeroTitle: "No critical steps missed — full standard workflow completed",
+    zeroBody:
+      "Nothing critical was skipped: verification, cross-team confirmation and risk control all happened inside the time limit.",
+    zeroHint: "Turn this run into a one-page checklist you can reuse next time.",
+  },
+  /** Professor feedback 3: rubric matrix (weight / level badges reuse c.rubric) */
+  rubricMatrix: {
+    title: "Transparent rubric matrix",
+    subtitle:
+      "Four dimensions × five levels of behavioural standards — your current level is marked, and Level 5 is the top standard.",
+    expand: "Expand the full matrix",
+    collapse: "Collapse the matrix",
+    openModal: "Open the full rubric",
+    bandsLabel: "Level bands",
+    colLevel: "Level",
+    colRange: "Score range",
+    colCriteria: "Behaviour standard",
+    dimensionAria: (title: string) => `${title} level matrix`,
   },
   certificate: {
     sectionTitle: "Competency certificate",

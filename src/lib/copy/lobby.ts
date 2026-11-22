@@ -1,7 +1,7 @@
-/** 大廳（首頁）文案。 */
+/** 大廳（首頁）文案：單一旗艦任務的展示型版面。 */
 const zh = {
   nav: {
-    missions: "實戰任務",
+    missions: "旗艦任務",
     method: "訓練方法",
     framework: "能力框架",
     start: "開始模擬",
@@ -9,30 +9,6 @@ const zh = {
     dimensions: "評估維度說明",
     reset: "重置體驗紀錄",
     resetDone: "已清除本機的模擬紀錄。",
-    dimensionsClose: "關閉",
-    dimensionsNote: "四項維度依權重加總為總分：批判性驗證 35%、向上溝通 25%、高壓抗干擾 20%、資訊交叉比對 20%。",
-  },
-  dimensions: {
-    eyebrow: "How you are scored",
-    title: "四個維度，全部由你的行為決定",
-    items: [
-      {
-        title: "批判性驗證 · 35%",
-        copy: "是否追問數據來源、樣本量與外部驗證；是否解鎖被藏起來的原始日誌。只看簡報就簽核，此項會被硬性壓到 35 分以下。",
-      },
-      {
-        title: "向上溝通 · 25%",
-        copy: "決策理據清楚交代風險、數據依據與建議方案；是否在被拉高的壓力下仍能講清楚。",
-      },
-      {
-        title: "高壓抗干擾 · 20%",
-        copy: "倒數計時下是否凜而不亂、是否在時限內回覆 VP 的 45 秒突擊、是否倉促提交。",
-      },
-      {
-        title: "資訊交叉比對 · 20%",
-        copy: "是否閱讀多份文件、是否向不同角色交叉查證，而不是只聽一個人的版本。",
-      },
-    ],
   },
   hero: {
     eyebrow: "Institutional-grade training",
@@ -40,14 +16,13 @@ const zh = {
     titleLine2: "訓練你識破數據陷阱與高壓決策的真本事。",
     lead: "NexusSim 把你放進真實的職場駕駛艙：十分鐘倒數、四個各懷立場的同事、一份漂亮得過分的數據簡報。你只有一次簽核機會——",
     leadHighlight: "你會相信 92%，還是去找那份沒人想給你的原始日誌？",
-    primaryCta: "進入戰情室",
-    secondaryCta: "了解訓練方法",
+    primaryCta: "立即進入旗艦模擬",
+    secondaryCta: "查看評分標準 (Rubric)",
     stats: [
       { value: "10 MIN", label: "高壓決策窗口" },
       { value: "4", label: "資訊不對稱 NPC" },
       { value: "4D", label: "能力雷達評分" },
     ],
-    previewTitle: "War-room preview",
     previewSubtitle: "左欄施壓 → 中欄查證 → 右欄簽核",
     preview: {
       window: "nexus-launch-crisis",
@@ -62,6 +37,44 @@ const zh = {
       vpPopup: "Sarah（VP）· 限時 45 秒",
     },
   },
+  flagship: {
+    eyebrow: "Flagship Scenario",
+    title: "一個劇本，練到骨子裡",
+    lead: "目前全站只開放一個旗艦級深度劇本。它不是選擇題測驗，而是一場十分鐘的真實上線簽核。",
+    status: "LIVE · 現正開放",
+    telemetry: (minutes: number) => `${minutes} MIN 限時高壓`,
+    roleLabel: "你的角色",
+    roleValue: "產品營運專員 / Product Operations Associate",
+    rubricLabel: "4 個維度，依權重加總",
+    cta: "進入戰情室",
+    engineLive: "LIVE AI · DeepSeek",
+    engineOffline: "OFFLINE DEMO",
+    flowLabel: "一場模擬，四個階段",
+    flow: [
+      {
+        step: "01",
+        title: "行前導覽",
+        copy: "90 秒看懂你的角色、任務目標與計分方式，再進場。",
+      },
+      {
+        step: "02",
+        title: "多方對話查證",
+        copy: "四位各懷立場的同事、三份互相矛盾的文件；問對問題才解鎖原始日誌。",
+      },
+      {
+        step: "03",
+        title: "高壓危機應對",
+        copy: "倒數計時、主管催促、副總裁 45 秒突擊，在壓力下交出判斷。",
+      },
+      {
+        step: "04",
+        title: "透明 Rubric 升級報告",
+        copy: "四維雷達、行為軌跡覆盤，以及下一步該怎麼練。",
+      },
+    ],
+    debriefNote: "結業報告附可執行的升級建議與漏步診斷：哪一步沒做、哪個關鍵問題沒問，都會逐項標出。",
+  },
+  teaser: "第二波深度劇本開發中：《FinGuard 金融危機公關應變》—— 展示平台可擴充架構。",
   pillars: {
     eyebrow: "Competency Framework",
     title: "四項 AI 取代不了的職場能力",
@@ -84,18 +97,6 @@ const zh = {
         copy: "用一句話講清楚最大風險與建議方案，而不是把焦慮傳遞給老闆。",
       },
     ],
-  },
-  missions: {
-    eyebrow: "Enterprise Simulations",
-    title: "企業模擬任務",
-    lead: "一個旗艦級深度劇本已開放，其餘三個產業任務正在製作中。",
-    audience: "適合大專院校商管、資訊與傳播科系",
-    duration: "10 MIN",
-    open: "OPEN",
-    comingSoon: "即將開放",
-    enter: "進入戰情室",
-    locked: "敬請期待",
-    flagshipNote: "旗艦劇本：4 位 AI NPC、3 份工作文件、5 段確定性事件與 45 秒高壓彈窗。",
   },
   why: {
     eyebrow: "Why NexusSim",
@@ -133,11 +134,6 @@ const zh = {
       },
     ],
   },
-  cta: {
-    title: "你只有 10 分鐘，而 92% 可能不是真的。",
-    lead: "不需要註冊、不需要登入。所有模擬狀態保存在你的瀏覽器，重新整理或重置即可再挑戰一次。",
-    button: "立即進入 NovaTech 上線風暴",
-  },
   footer: {
     brand: "NexusSim · AI 時代職場高壓與批判性思考模擬器",
     disclaimer: "此原型為教學示範，劇本與企業均為虛構",
@@ -149,7 +145,7 @@ export type LobbyCopy = typeof zh;
 
 const en: LobbyCopy = {
   nav: {
-    missions: "Missions",
+    missions: "Flagship",
     method: "Method",
     framework: "Framework",
     start: "Start simulation",
@@ -157,30 +153,6 @@ const en: LobbyCopy = {
     dimensions: "How scoring works",
     reset: "Reset my records",
     resetDone: "Local simulation records cleared.",
-    dimensionsClose: "Close",
-    dimensionsNote: "Each dimension is weighted into your total score: critical verification 35%, upward communication 25%, pressure resilience 20%, cross-referencing 20%.",
-  },
-  dimensions: {
-    eyebrow: "How you are scored",
-    title: "Four dimensions, all evidence-based",
-    items: [
-      {
-        title: "Critical verification · 35%",
-        copy: "Did you question the source, the sample size and the external validation — and unlock the raw logs? Signing off on the deck alone hard-caps this dimension below 35.",
-      },
-      {
-        title: "Upward communication · 25%",
-        copy: "Does your rationale state the risk, the data behind it and a recommended path — clearly, even while pressure rises?",
-      },
-      {
-        title: "Pressure resilience · 20%",
-        copy: "Do you stay composed against the countdown, answer the VP within 45 seconds, and avoid a rushed sign-off?",
-      },
-      {
-        title: "Cross-referencing · 20%",
-        copy: "Do you read more than one document and check the story with more than one colleague instead of trusting a single version?",
-      },
-    ],
   },
   hero: {
     eyebrow: "Institutional-grade training",
@@ -188,14 +160,13 @@ const en: LobbyCopy = {
     titleLine2: "train the judgement to spot the data trap — and decide under pressure.",
     lead: "NexusSim drops you into a real workplace cockpit: a ten-minute countdown, four colleagues with four agendas, and a deck that looks too good to be true. You get exactly one sign-off —",
     leadHighlight: "will you trust the 92%, or go looking for the raw logs nobody wants to hand you?",
-    primaryCta: "Enter the war room",
-    secondaryCta: "See how the training works",
+    primaryCta: "Enter the flagship simulation",
+    secondaryCta: "View the scoring rubric",
     stats: [
       { value: "10 MIN", label: "Decision window" },
       { value: "4", label: "Asymmetric-information NPCs" },
       { value: "4D", label: "Scored competency radar" },
     ],
-    previewTitle: "War-room preview",
     previewSubtitle: "Pressure on the left → evidence in the middle → sign-off on the right",
     preview: {
       window: "nexus-launch-crisis",
@@ -210,6 +181,46 @@ const en: LobbyCopy = {
       vpPopup: "Sarah (VP) · 45 seconds",
     },
   },
+  flagship: {
+    eyebrow: "Flagship Scenario",
+    title: "One scenario, trained all the way down",
+    lead: "Only one flagship deep-dive is live. It isn't a multiple-choice quiz — it's ten real minutes of a launch sign-off.",
+    status: "LIVE · Open now",
+    telemetry: (minutes: number) => `${minutes} MIN under pressure`,
+    roleLabel: "Your role",
+    roleValue: "Product Operations Associate / 產品營運專員",
+    rubricLabel: "4 dimensions, weighted into your score",
+    cta: "Enter the war room",
+    engineLive: "LIVE AI · DeepSeek",
+    engineOffline: "OFFLINE DEMO",
+    flowLabel: "One simulation, four stages",
+    flow: [
+      {
+        step: "01",
+        title: "Pre-brief",
+        copy: "Ninety seconds to understand your role, the mission and exactly how you're scored.",
+      },
+      {
+        step: "02",
+        title: "Multi-source verification",
+        copy: "Four colleagues with four agendas, three conflicting documents. Only the right questions unlock the raw logs.",
+      },
+      {
+        step: "03",
+        title: "Pressure response",
+        copy: "A running clock, a pushing director, a 45-second VP grilling. Deliver your judgement under pressure.",
+      },
+      {
+        step: "04",
+        title: "Transparent rubric debrief",
+        copy: "A four-axis radar, a behavioural play-by-play, and a concrete plan for your next run.",
+      },
+    ],
+    debriefNote:
+      "The debrief ships with actionable level-up coaching and missed-step diagnostics: which step you skipped and which question you never asked are called out one by one.",
+  },
+  teaser:
+    "Second-wave deep scenarios in development: “FinGuard Financial Crisis PR Response” — proof the platform is built to expand.",
   pillars: {
     eyebrow: "Competency Framework",
     title: "Four workplace skills AI can't replace",
@@ -232,18 +243,6 @@ const en: LobbyCopy = {
         copy: "Say the biggest risk and your recommendation in one clear message — instead of forwarding your anxiety to the boss.",
       },
     ],
-  },
-  missions: {
-    eyebrow: "Enterprise Simulations",
-    title: "Enterprise missions",
-    lead: "One flagship deep-dive scenario is live; three more industry missions are in production.",
-    audience: "Built for business, computing and communication students",
-    duration: "10 MIN",
-    open: "OPEN",
-    comingSoon: "COMING SOON",
-    enter: "Enter the war room",
-    locked: "Coming soon",
-    flagshipNote: "Flagship scenario: 4 AI NPCs, 3 working documents, 5 scripted events and a 45-second pressure popup.",
   },
   why: {
     eyebrow: "Why NexusSim",
@@ -280,11 +279,6 @@ const en: LobbyCopy = {
         copy: "A four-axis radar, a behavioural play-by-play review, and a printable enterprise-simulation certificate.",
       },
     ],
-  },
-  cta: {
-    title: "You have 10 minutes, and that 92% might not be real.",
-    lead: "No sign-up, no login. Everything is stored in your browser — refresh or reset to take another run.",
-    button: "Enter the NovaTech launch crisis",
   },
   footer: {
     brand: "NexusSim · High-pressure workplace & critical-thinking simulator",

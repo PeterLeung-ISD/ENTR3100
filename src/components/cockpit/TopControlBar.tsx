@@ -3,8 +3,11 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  ClipboardCheck,
   FastForward,
   Gauge,
+  HelpCircle,
+  KeyRound,
   Pause,
   Play,
   RotateCcw,
@@ -27,6 +30,11 @@ interface TopControlBarProps {
   onSkipMinute: () => void;
   onNextEvent: () => void;
   onRestart: () => void;
+  onOpenApiSettings: () => void;
+  /** 重新查看行前導覽（開啟時暫停倒數） */
+  onOpenGuide: () => void;
+  /** 隨時查閱透明評分標準 */
+  onOpenRubric: () => void;
 }
 
 export default function TopControlBar({
@@ -41,6 +49,9 @@ export default function TopControlBar({
   onSkipMinute,
   onNextEvent,
   onRestart,
+  onOpenApiSettings,
+  onOpenGuide,
+  onOpenRubric,
 }: TopControlBarProps) {
   const { c } = useLocale();
   const copy = c.cockpit.topbar;
@@ -56,7 +67,7 @@ export default function TopControlBar({
     pressureValue >= 85 ? "text-critical" : pressureValue >= 70 ? "text-warn" : "text-cockpit-text";
 
   const engineLabel =
-    mode === "live" ? copy.engineLive : mode === "offline-mock" ? copy.engineOffline : copy.engineDetecting;
+    mode === "live" ? copy.aiLive : mode === "offline-mock" ? copy.aiOffline : copy.aiDetecting;
   const engineDot =
     mode === "live"
       ? "bg-unlocked"
@@ -65,6 +76,12 @@ export default function TopControlBar({
         : "bg-cockpit-muted animate-pulse";
   const engineTone =
     mode === "live" ? "text-unlocked" : mode === "offline-mock" ? "text-warn" : "text-cockpit-muted";
+  const engineChip =
+    mode === "live"
+      ? "border-unlocked/40 bg-unlocked/10 hover:bg-unlocked/15"
+      : mode === "offline-mock"
+        ? "border-warn/40 bg-warn/10 hover:bg-warn/15"
+        : "border-cockpit-line bg-cockpit-elevated/60";
 
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center gap-2 border-b border-cockpit-line bg-cockpit-panel px-2 sm:gap-3 sm:px-3">
@@ -83,14 +100,18 @@ export default function TopControlBar({
             {scenarioTitle || copy.fallbackTitle}
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] leading-none">
-            <span
-              className="inline-flex min-w-0 items-center gap-1"
-              aria-label={copy.engineAria(engineLabel)}
+            <button
+              type="button"
+              onClick={onOpenApiSettings}
+              aria-label={`${copy.aiSettingsAria} — ${engineLabel}`}
+              title={copy.aiSettingsAria}
+              className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-left transition ${engineChip} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-calm`}
             >
               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${engineDot}`} aria-hidden="true" />
               <span className={`truncate font-semibold ${engineTone}`}>{engineLabel}</span>
-            </span>
-            <span className="shrink-0 text-cockpit-line" aria-hidden="true">
+              <KeyRound className="h-2.5 w-2.5 shrink-0 text-cockpit-muted" aria-hidden="true" />
+            </button>
+            <span className="hidden shrink-0 text-cockpit-line sm:inline" aria-hidden="true">
               |
             </span>
             <span className="hidden min-w-0 truncate text-cockpit-muted sm:inline">
@@ -171,6 +192,25 @@ export default function TopControlBar({
         <div className="shrink-0">
           <LanguageToggle compact tone="dark" />
         </div>
+
+        <button
+          type="button"
+          onClick={onOpenGuide}
+          aria-label={copy.guide}
+          title={copy.guide}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cockpit-line bg-cockpit-elevated text-cockpit-muted transition hover:border-calm/40 hover:text-cockpit-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-calm"
+        >
+          <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenRubric}
+          aria-label={copy.rubric}
+          title={copy.rubric}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cockpit-line bg-cockpit-elevated text-cockpit-muted transition hover:border-calm/40 hover:text-cockpit-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-calm"
+        >
+          <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
 
         <button
           type="button"

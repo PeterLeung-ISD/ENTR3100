@@ -128,6 +128,7 @@ function normalizeTelemetry(input: Partial<BehavioralTelemetry> | undefined): Be
       ? t.viewedDocuments.filter((d): d is string => typeof d === "string").slice(0, 20)
       : [],
     questionedAuthority: Boolean(t.questionedAuthority),
+    consultedLegal: Boolean(t.consultedLegal),
     respondedToVpOnTime:
       t.respondedToVpOnTime === true ? true : t.respondedToVpOnTime === false ? false : null,
     vpResponseText: typeof t.vpResponseText === "string" ? t.vpResponseText.slice(0, 1200) : "",
@@ -184,6 +185,7 @@ function buildEvaluationPrompt(
       `- Documents opened: ${telemetry.viewedDocuments.join(", ") || "none"}`,
       `- Colleagues contacted: ${telemetry.contactedNpcs.join(", ") || "none"}`,
       `- Challenged Marcus's data: ${telemetry.questionedAuthority ? "yes" : "no"}`,
+      `- Consulted legal counsel David: ${telemetry.consultedLegal ? "yes" : "no"}`,
       `- 45-second VP popup: ${telemetry.respondedToVpOnTime === null ? "not encountered" : telemetry.respondedToVpOnTime ? "answered on time" : "timed out"}`,
       `- VP reply content: ${telemetry.vpResponseText || "(none)"}`,
       `- Final decision: ${decisionLabel[telemetry.finalDecision]}`,
@@ -210,6 +212,7 @@ function buildEvaluationPrompt(
     `- 點閱文件：${telemetry.viewedDocuments.join("、") || "無"}`,
     `- 曾聯繫的同事：${telemetry.contactedNpcs.join("、") || "無"}`,
     `- 是否質疑 Marcus 的數據：${telemetry.questionedAuthority ? "是" : "否"}`,
+    `- 是否與法務顧問 David 確認合規風險：${telemetry.consultedLegal ? "是" : "否"}`,
     `- 45 秒 VP 彈窗回覆：${telemetry.respondedToVpOnTime === null ? "未經歷" : telemetry.respondedToVpOnTime ? "準時完成" : "超時"}`,
     `- VP 回覆內容：${telemetry.vpResponseText || "（無）"}`,
     `- 最終決策：${decisionLabel[telemetry.finalDecision]}`,

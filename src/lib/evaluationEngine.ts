@@ -1,5 +1,6 @@
 import { flagshipScenario } from "@/data/flagshipScenario";
 import { flagshipScenarioEn } from "@/data/flagshipScenarioEn";
+import { buildDimensionCoaching, buildMissedSteps } from "@/lib/coachingEngine";
 import { makeVerificationId } from "@/lib/ids";
 import type { Locale } from "@/lib/i18n";
 import type {
@@ -151,11 +152,15 @@ export function mergeDimensions(
   return blended;
 }
 
+/**
+ * 總分權重（與 src/data/scoringRubric.ts 的 Rubric 權重完全一致）：
+ * 批判性驗證 30% / 資訊交叉比對 25% / 高壓抗干擾 20% / 向上溝通 25%
+ */
 export function weightedOverall(d: EvaluationDimensions): number {
   return Math.round(
-    d.criticalVerification * 0.35 +
+    d.criticalVerification * 0.3 +
+      d.crossReferencing * 0.25 +
       d.pressureResilience * 0.2 +
-      d.crossReferencing * 0.2 +
       d.upwardCommunication * 0.25,
   );
 }
@@ -436,6 +441,13 @@ export function assembleEvaluation(args: {
             ],
     xray: buildXRay(telemetry, locale),
     trapAnalysis: buildTrapAnalysis(locale),
+    dimensionCoaching: buildDimensionCoaching({
+      telemetry,
+      dimensions,
+      locale,
+      citedFigures: rule.citedFigures,
+    }),
+    missedSteps: buildMissedSteps(telemetry, locale),
     mode,
     locale,
     generatedAt: new Date().toISOString(),

@@ -117,6 +117,7 @@ export function newTelemetry(): BehavioralTelemetry {
     unlockedRawLogs: false,
     viewedDocuments: [],
     questionedAuthority: false,
+    consultedLegal: false,
     respondedToVpOnTime: null,
     totalMessagesSent: 0,
     timeSpentSeconds: 0,

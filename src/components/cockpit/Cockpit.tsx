@@ -19,8 +19,22 @@ import MessengerPane from "@/components/cockpit/MessengerPane";
 import DocumentPane from "@/components/cockpit/DocumentPane";
 import DecisionPane, { type ActivityItem } from "@/components/cockpit/DecisionPane";
 import UrgentPopupModal from "@/components/cockpit/UrgentPopupModal";
+import ApiSettingsModal from "@/components/cockpit/ApiSettingsModal";
+import PreSimGuideModal from "@/components/cockpit/PreSimGuideModal";
+import RubricModal from "@/components/shared/RubricModal";
+import { computeRuleDimensions } from "@/lib/evaluationEngine";
+import { levelForScore } from "@/data/scoringRubric";
 import { useLocale } from "@/lib/LocaleProvider";
 import { formatSimTime, makeId } from "@/lib/ids";
+import {
+  DEFAULT_AI_CONFIG,
+  aiHeaders,
+  clearAiConfig,
+  hasLocalAiKey,
+  loadAiConfig,
+  saveAiConfig,
+  type AiConfig,
+} from "@/lib/aiConfig";
 import {
   clearDraft,
   loadCandidateName,
@@ -34,6 +48,7 @@ import type {
   ChatMessage,
   EvaluationResult,
   FinalDecision,
+  NpcChatHistoryEntry,
   NpcId,
   Scenario,
   TimelineEvent,
@@ -69,15 +84,20 @@ const uniq = <T,>(list: T[]): T[] => Array.from(new Set(list));
 
 export default function Cockpit({ scenario }: CockpitProps) {
   const router = useRouter();
-  const { c } = useLocale();
+  const { c, locale } = useLocale();
   const copy = c.cockpit;
   const total = scenario.totalSeconds;
 
   const [remaining, setRemaining] = useState(total);
   const [running, setRunning] = useState(false);
-  const [introOpen, setIntroOpen] = useState(true);
+  const [guideOpen, setGuideOpen] = useState(true);
+  const [firstVisit, setFirstVisit] = useState(true);
+  const [rubricOpen, setRubricOpen] = useState(false);
   const [mode, setMode] = useState<"live" | "offline-mock" | "detecting">("detecting");
   const [mobilePane, setMobilePane] = useState<MobilePane>("chat");
+  const [aiConfig, setAiConfig] = useState<AiConfig>(() => ({ ...DEFAULT_AI_CONFIG }));
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [serverHasKey, setServerHasKey] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeNpc, setActiveNpc] = useState<NpcId>("marcus");
@@ -105,6 +125,8 @@ export default function Cockpit({ scenario }: CockpitProps) {
   const firedRef = useRef<Set<string>>(new Set());
   const submittedRef = useRef(false);
   const hydratedRef = useRef(false);
+  /** 開啟導覽／Rubric 前的計時器狀態，關閉後據此恢復 */
+  const wasRunningRef = useRef(false);
   // 事件／toast 回呼保持穩定 identity，但永遠取用目前語言的文案。
   const copyRef = useRef(copy);
 
@@ -250,17 +272,20 @@ export default function Cockpit({ scenario }: CockpitProps) {
     );
   }, [activeDocId, unlockedDocIds]);
 
-  // 模式偵測
+  // 模式偵測：本機金鑰優先，其次伺服器環境變數
   useEffect(() => {
     let cancelled = false;
+    const local = loadAiConfig();
+    setAiConfig(local);
     fetch("/api/npc-chat")
       .then((res) => res.json())
-      .then((data: { mode?: string }) => {
+      .then((data: { mode?: string; hasServerKey?: boolean }) => {
         if (cancelled) return;
-        setMode(data.mode === "live" ? "live" : "offline-mock");
+        setServerHasKey(Boolean(data.hasServerKey));
+        setMode(hasLocalAiKey(local) || data.mode === "live" ? "live" : "offline-mock");
       })
       .catch(() => {
-        if (!cancelled) setMode("offline-mock");
+        if (cancelled) setMode(hasLocalAiKey(local) ? "live" : "offline-mock");
       });
     return () => {
       cancelled = true;
@@ -291,7 +316,8 @@ export default function Cockpit({ scenario }: CockpitProps) {
             time: simTime(event.triggerAtSecondsRemaining),
           })),
       );
-      setIntroOpen(false);
+      setGuideOpen(false);
+      setFirstVisit(false);
       setRunning(true);
       pushToast(copyRef.current.toasts.draftRestored, "info");
     }
@@ -332,6 +358,49 @@ export default function Cockpit({ scenario }: CockpitProps) {
     setMobilePane("chat");
   }, []);
 
+  // AI 設定：儲存 / 清除本機金鑰
+  const handleAiSave = useCallback(
+    (next: AiConfig) => {
+      const saved = saveAiConfig(next);
+      setAiConfig(saved);
+      setAiSettingsOpen(false);
+      setMode(hasLocalAiKey(saved) || serverHasKey ? "live" : "offline-mock");
+      pushToast(copyRef.current.apiSettings.saved, "success");
+    },
+    [pushToast, serverHasKey],
+  );
+
+  const handleAiClear = useCallback(() => {
+    const cleared = clearAiConfig();
+    setAiConfig(cleared);
+    setMode(serverHasKey ? "live" : "offline-mock");
+    pushToast(copyRef.current.apiSettings.cleared, "info");
+  }, [pushToast, serverHasKey]);
+
+  // 行前導覽：開啟時暫停倒數，關閉後若原本在跑就恢復
+  const openGuide = useCallback(() => {
+    wasRunningRef.current = running;
+    setRunning(false);
+    setGuideOpen(true);
+  }, [running]);
+
+  const closeGuide = useCallback((startNow = false) => {
+    setGuideOpen(false);
+    if (startNow || wasRunningRef.current) setRunning(true);
+  }, []);
+
+  const openRubric = useCallback(() => {
+    wasRunningRef.current = running;
+    setRunning(false);
+    setRubricOpen(true);
+  }, [running]);
+
+  const closeRubric = useCallback(() => {
+    setRubricOpen(false);
+    if (wasRunningRef.current) setRunning(true);
+    wasRunningRef.current = false;
+  }, []);
+
   const openDoc = useCallback((docId: string) => {
     setActiveDocId(docId);
     setNewDocIds((prev) => prev.filter((id) => id !== docId));
@@ -346,6 +415,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
     [npcName, pushToast, selectNpc],
   );
 
+  // 送出訊息：帶上多輪對話歷史、戰情狀態與（可選）瀏覽器端 API Key
   const sendMessage = useCallback(
     async (text: string) => {
       const npcId = activeNpc;
@@ -354,36 +424,68 @@ export default function Cockpit({ scenario }: CockpitProps) {
         ...prev,
         totalMessagesSent: prev.totalMessagesSent + 1,
         contactedNpcs: uniq([...prev.contactedNpcs, npcId]),
+        consultedLegal: prev.consultedLegal || npcId === "david",
       }));
       setTypingNpc(npcId);
       setMobilePane("chat");
 
+      // 該頻道的多輪歷史（不含系統提示與即將送出的這一句）
+      const chatHistory: NpcChatHistoryEntry[] = messages
+        .filter((message) => message.npcId === npcId && message.sender !== "system")
+        .slice(-10)
+        .map((message) => ({
+          sender: message.sender === "user" ? "user" : "npc",
+          content: message.content,
+          timestamp: message.timestamp,
+        }));
+
+      // 壓力值快照（與右欄顯示的公式一致）
+      const elapsed = total - remaining;
+      const fired = new Set(activity.map((item) => item.id));
+      const deltaSum = scenario.timeline.reduce(
+        (acc, event) => acc + (fired.has(event.id) ? (event.payload.pressureDelta ?? 0) : 0),
+        0,
+      );
+      const pressureLevel = Math.min(100, 12 + (elapsed / total) * 35 + deltaSum * 0.7);
+
       try {
         const res = await fetch("/api/npc-chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...aiHeaders(loadAiConfig()),
+          },
           body: JSON.stringify({
             npcId,
-            message: text,
+            userMessage: text,
+            chatHistory,
+            simulationContext: {
+              remainingSeconds: remaining,
+              unlockedDocIds,
+              pressureLevel: Math.round(pressureLevel),
+            },
             scenarioId: scenario.id,
-            unlockedDocuments: unlockedDocIds,
+            locale,
           }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as {
           reply: string;
-          mode: "live" | "offline-mock";
-          unlockDocumentId?: string;
+          mode?: "live" | "offline-mock";
+          isLiveAi?: boolean;
+          unlockDocumentId?: string | null;
           questionedAuthority?: boolean;
+          warningNotice?: string;
         };
+        const live = data.isLiveAi ?? data.mode === "live";
+        setMode(live ? "live" : "offline-mock");
 
-        setMode(data.mode === "live" ? "live" : "offline-mock");
         pushMessage({
           npcId,
           sender: "npc",
           content: data.reply,
           timestamp: simTime(remaining),
-          attachedDocId: data.unlockDocumentId,
+          attachedDocId: data.unlockDocumentId ?? undefined,
           isUrgent: npcId === "sarah",
         });
         if (data.unlockDocumentId) {
@@ -391,6 +493,9 @@ export default function Cockpit({ scenario }: CockpitProps) {
         }
         if (data.questionedAuthority) {
           setTelemetry((prev) => ({ ...prev, questionedAuthority: true }));
+        }
+        if (data.warningNotice) {
+          pushToast(data.warningNotice, "warn");
         }
         if (npcId !== activeNpc) {
           setUnread((prev) => ({ ...prev, [npcId]: (prev[npcId] ?? 0) + 1 }));
@@ -407,7 +512,21 @@ export default function Cockpit({ scenario }: CockpitProps) {
         setTypingNpc(null);
       }
     },
-    [activeNpc, pushMessage, pushToast, remaining, scenario.id, simTime, unlockDoc, unlockedDocIds],
+    [
+      activeNpc,
+      activity,
+      locale,
+      messages,
+      pushMessage,
+      pushToast,
+      remaining,
+      scenario.id,
+      scenario.timeline,
+      simTime,
+      total,
+      unlockDoc,
+      unlockedDocIds,
+    ],
   );
 
   const replyToVp = useCallback(
@@ -463,8 +582,9 @@ export default function Cockpit({ scenario }: CockpitProps) {
     submittedRef.current = false;
     clearDraft(scenario.id);
     setRemaining(total);
-    setRunning(true);
-    setIntroOpen(false);
+    setRunning(false);
+    setGuideOpen(true);
+    setFirstVisit(false);
     setMessages([]);
     setActivity([]);
     setUnread({});
@@ -529,6 +649,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
           body: JSON.stringify({
             scenarioId: scenario.id,
             candidateName: loadCandidateName(),
+            locale,
             telemetry: payload,
           }),
         });
@@ -553,6 +674,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
     },
     [
       decision,
+      locale,
       messages,
       modal,
       pushToast,
@@ -593,6 +715,17 @@ export default function Cockpit({ scenario }: CockpitProps) {
     return map;
   }, [copy.documents.unknownOwner, scenario.documents, scenario.npcs]);
 
+  // Rubric 視窗內即時顯示「你目前在此」：以當前行為埋點推算的暫定等級
+  const provisionalLevels = useMemo(() => {
+    const dims = computeRuleDimensions(telemetry, locale).dimensions;
+    return {
+      criticalVerification: levelForScore(dims.criticalVerification),
+      crossReferencing: levelForScore(dims.crossReferencing),
+      pressureResilience: levelForScore(dims.pressureResilience),
+      upwardCommunication: levelForScore(dims.upwardCommunication),
+    };
+  }, [telemetry, locale]);
+
   const readableCount = telemetry.viewedDocuments.length;
   const unreadTotal = useMemo(
     () => Object.values(unread).reduce((sum, count) => sum + count, 0),
@@ -619,6 +752,9 @@ export default function Cockpit({ scenario }: CockpitProps) {
         onSkipMinute={skipMinute}
         onNextEvent={nextEvent}
         onRestart={restart}
+        onOpenApiSettings={() => setAiSettingsOpen(true)}
+        onOpenGuide={openGuide}
+        onOpenRubric={openRubric}
       />
 
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 p-2.5 pb-16 lg:grid-cols-[310px_minmax(0,1fr)_360px] lg:gap-3 lg:pb-3 xl:grid-cols-[350px_minmax(0,1fr)_410px]">
@@ -630,6 +766,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
             unread={unread}
             typing={typingNpc === activeNpc}
             documents={scenario.documents}
+            unlockedDocIds={unlockedDocIds}
             onSelectNpc={selectNpc}
             onSend={sendMessage}
             onOpenDoc={openDoc}
@@ -717,6 +854,15 @@ export default function Cockpit({ scenario }: CockpitProps) {
         </div>
       </nav>
 
+      <ApiSettingsModal
+        open={aiSettingsOpen}
+        config={aiConfig}
+        serverHasKey={serverHasKey}
+        onClose={() => setAiSettingsOpen(false)}
+        onSave={handleAiSave}
+        onClear={handleAiClear}
+      />
+
       <UrgentPopupModal
         open={Boolean(modal)}
         title={modal?.title ?? ""}
@@ -734,81 +880,29 @@ export default function Cockpit({ scenario }: CockpitProps) {
         }}
       />
 
-      {/* intro brief */}
-      {introOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="animate-pop w-full max-w-xl overflow-hidden rounded-2xl border border-cockpit-line bg-cockpit-panel shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-cockpit-line bg-cockpit-elevated px-5 py-3">
-              <Rocket className="h-4 w-4 text-calm" aria-hidden="true" />
-              <span className="text-[11px] font-bold uppercase tracking-widest text-calm">Mission Brief</span>
-              <span className="ml-auto rounded bg-cockpit-base px-1.5 py-0.5 text-[9px] text-cockpit-muted">
-                {copy.shell.introDuration(Math.round(total / 60), total)}
-              </span>
-            </div>
-            <div className="max-h-[70dvh] overflow-y-auto scroll-thin px-5 py-4">
-              <h1 className="text-[20px] font-bold leading-snug text-cockpit-text">
-                {scenario.summary.title}
-              </h1>
-              <p className="mt-1 text-[12.5px] text-cockpit-muted">{scenario.studentRole}</p>
-              <p className="mt-3 whitespace-pre-wrap text-[14px] leading-relaxed text-cockpit-text/85">
-                {scenario.openingBrief}
-              </p>
+      {/* 行前分步導覽：開啟時倒數暫停 */}
+      <PreSimGuideModal
+        open={guideOpen}
+        firstVisit={firstVisit}
+        briefing={scenario.openingBrief}
+        roster={scenario.npcs.map((npc) => ({
+          name: npc.name,
+          role: npc.role,
+          color: npc.avatarColor,
+        }))}
+        onStart={() => closeGuide(true)}
+        onSkip={() => closeGuide(true)}
+        onOpenRubric={() => setRubricOpen(true)}
+        onClose={() => closeGuide(false)}
+      />
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {scenario.npcs.map((npc) => (
-                  <div
-                    key={npc.id}
-                    className="flex items-center gap-2 rounded-lg border border-cockpit-line bg-cockpit-elevated/60 px-2.5 py-2"
-                  >
-                    <span
-                      className="flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-bold"
-                      style={{
-                        backgroundColor: `${npc.avatarColor}1f`,
-                        color: npc.avatarColor,
-                        borderColor: `${npc.avatarColor}44`,
-                      }}
-                      aria-hidden="true"
-                    >
-                      {npc.name.slice(0, 1)}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[12.5px] font-medium text-cockpit-text">{npc.name}</span>
-                      <span className="block truncate text-[11px] text-cockpit-muted">{npc.role}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 space-y-2 rounded-lg border border-warn/25 bg-warn/[0.07] px-3 py-2.5">
-                <p className="flex items-start gap-1.5 text-[12.5px] leading-relaxed text-warn/90">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  {copy.shell.introNoticeData}
-                </p>
-                <p className="flex items-start gap-1.5 text-[12.5px] leading-relaxed text-warn/90">
-                  <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  {copy.shell.introNoticeTimeout}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t border-cockpit-line bg-cockpit-base/60 px-5 py-3">
-              <span className="hidden text-[9.5px] text-cockpit-muted sm:inline">
-                {copy.shell.introDemoHint(1)}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setIntroOpen(false);
-                  setRunning(true);
-                }}
-                className="ml-auto flex items-center gap-1.5 rounded-lg bg-cobalt px-4 py-2 text-[12px] font-bold text-white transition hover:bg-cobalt-hover"
-              >
-                {copy.shell.enterCockpit}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 透明評分標準：模擬前中後隨時查閱 */}
+      <RubricModal
+        open={rubricOpen}
+        onClose={closeRubric}
+        levels={provisionalLevels}
+        tone="dark"
+      />
 
       {/* submitting overlay */}
       {submitting && (

@@ -51,7 +51,12 @@ for (let i = 0; i < 60; i++) {
   const { status, html } = await get("/");
   log("GET / 200", status === 200, `status=${status}`);
   log("lobby 有 NovaAssist 字樣", html.includes("NovaAssist"));
-  log("lobby 有 Coming Soon 任務", html.includes("Coming Soon") || html.includes("即將") || html.includes("Meridian"));
+  log(
+    "lobby 聚焦單一旗艦任務（無 Coming Soon 卡片）",
+    !html.includes("Coming Soon") && !html.includes("Meridian") && html.includes("立即進入旗艦模擬"),
+  );
+  log("lobby 有評分標準入口", html.includes("查看評分標準") || html.includes("Rubric"));
+  log("lobby 有擴充劇本預告", html.includes("FinGuard") || html.includes("第二波"));
   log("lobby 有四個能力支柱", html.includes("批判") && html.includes("抗干擾"));
 }
 
@@ -62,6 +67,8 @@ for (let i = 0; i < 60; i++) {
   log("cockpit 有任務簡報", html.includes("簡報") || html.includes("Mission") || html.includes("作戰"));
   log("cockpit 有 NPC 名", html.includes("Marcus") && html.includes("Chloe"));
   log("cockpit 有倒數 10:00", html.includes("10:00") || html.includes("600"));
+  log("cockpit 有行前導覽與倒數暫停", html.includes("倒數計時暫停中") && html.includes("行前導覽"));
+  log("cockpit 有操作導覽 / 評分標準按鈕", html.includes("操作導覽") && html.includes("評分標準"));
 }
 
 // 3. unknown scenario → 404
@@ -169,6 +176,21 @@ const goodTelemetry = {
   log("bad run 批判性驗證上限 35", json?.dimensions?.criticalVerification <= 35, `cv=${json?.dimensions?.criticalVerification}`);
   log("bad run 等級不優於 B", ["B", "C"].includes(json?.grade), `grade=${json?.grade} score=${json?.overallScore}`);
   log("bad run 有負面盲點", json?.blindSpots?.length > 0);
+  log("bad run 有 4 個維度升等指導", json?.dimensionCoaching?.length === 4, `n=${json?.dimensionCoaching?.length}`);
+  log(
+    "升等指導含 Level 與具體做法",
+    json?.dimensionCoaching?.every(
+      (item) => [1, 2, 3, 4, 5].includes(item.achievedLevel) && item.howToLevelUp.length > 20 && item.evidenceObserved.length > 0,
+    ),
+  );
+  const missedIds = (json?.missedSteps ?? []).map((item) => item.id);
+  log("bad run 抓到遺漏原始日誌", missedIds.includes("missed-raw-logs"), `ids=${missedIds.join(",")}`);
+  log("bad run 抓到遺漏法務備忘錄", missedIds.includes("missed-legal-memo"));
+  log("bad run 抓到 VP 逾時", missedIds.includes("missed-vp-timeout"));
+  log(
+    "遺漏步驟都有 why + fix",
+    (json?.missedSteps ?? []).every((item) => item.whyItMatters.length > 10 && item.actionableFix.length > 10),
+  );
 }
 
 // 10. report page
@@ -242,6 +264,71 @@ const goodTelemetry = {
   log("EN evaluate 英文 xray", /[a-z]{4,}/i.test(json?.xray?.[0]?.title ?? ""));
   log("EN evaluate trapAnalysis 3 份", json?.trapAnalysis?.length === 3);
   log("EN evaluate 分數合理", json?.overallScore >= 70, `score=${json?.overallScore} grade=${json?.grade}`);
+}
+
+// 15. AI 設定：GET 探測 + 無金鑰 ping
+{
+  const { json } = await getJson("/api/npc-chat");
+  log("GET /api/npc-chat 有 hasServerKey", typeof json?.hasServerKey === "boolean", `hasServerKey=${json?.hasServerKey}`);
+  log("GET /api/npc-chat 有預設 model", json?.defaults?.model === "deepseek-chat", `model=${json?.defaults?.model}`);
+  log("GET /api/npc-chat 有預設 baseUrl", json?.defaults?.baseUrl === "https://api.deepseek.com");
+
+  const ping = await post("/api/npc-chat", { ping: true });
+  log("無金鑰 ping 回 ok:false", ping.json?.ok === false, `ok=${ping.json?.ok}`);
+  log("無金鑰 ping 有 warningNotice", typeof ping.json?.warningNotice === "string" && ping.json.warningNotice.length > 0);
+  log("無金鑰 ping 非 live", ping.json?.isLiveAi === false);
+}
+
+// 16. 假金鑰 ping 不應 500
+{
+  const res = await fetch(BASE + "/api/npc-chat", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-deepseek-api-key": "sk-invalid-key-for-test-only" },
+    body: JSON.stringify({ ping: true }),
+  });
+  const json = await res.json().catch(() => null);
+  log("假金鑰 ping 回 200", res.status === 200, `status=${res.status}`);
+  log("假金鑰 ping 回 ok:false", json?.ok === false, `ok=${json?.ok}`);
+  log("假金鑰 ping 有降級提示", typeof json?.warningNotice === "string");
+}
+
+// 17. 多輪對話 payload（chatHistory + simulationContext）
+{
+  const { json } = await post("/api/npc-chat", {
+    npcId: "chloe",
+    userMessage: "等一下，這 92% 的樣本數是多少？有做過外部真實用戶測試嗎？",
+    chatHistory: [
+      { sender: "user", content: "Chloe，簡報在哪？", timestamp: "14:01" },
+      { sender: "npc", content: "數字都在 Marcus 那份簡報裡。", timestamp: "14:01" },
+    ],
+    simulationContext: { remainingSeconds: 420, unlockedDocIds: ["doc-exec-deck"], pressureLevel: 48 },
+    scenarioId: "nexus-launch-crisis",
+  });
+  log("多輪 payload 有回覆", typeof json?.reply === "string" && json.reply.length > 0, (json?.reply ?? "").slice(0, 30));
+  log("多輪 payload isLiveAi 為布林", typeof json?.isLiveAi === "boolean", `isLiveAi=${json?.isLiveAi}`);
+  log("多輪 payload 觸發 doc-raw-logs 解鎖", json?.unlockDocumentId === "doc-raw-logs", `unlock=${json?.unlockDocumentId}`);
+
+  const marcus = await post("/api/npc-chat", {
+    npcId: "marcus",
+    userMessage: "我要看原始測試日誌 log 和樣本來源，快點給我。",
+    chatHistory: [],
+    simulationContext: { remainingSeconds: 300, unlockedDocIds: ["doc-exec-deck"], pressureLevel: 60 },
+    scenarioId: "nexus-launch-crisis",
+  });
+  log("Marcus 永不解鎖文件", !marcus.json?.unlockDocumentId, `unlock=${marcus.json?.unlockDocumentId}`);
+  log("Marcus 被質疑時標記 questionedAuthority", marcus.json?.questionedAuthority === true);
+}
+
+// 18. 舊版 payload 仍然相容
+{
+  const { json } = await post("/api/npc-chat", {
+    npcId: "chloe",
+    message: "樣本數是幾多？",
+    scenarioId: "nexus-launch-crisis",
+    unlockedDocuments: ["doc-exec-deck"],
+  });
+  log("舊版 payload 仍可解鎖", json?.unlockDocumentId === "doc-raw-logs", `unlock=${json?.unlockDocumentId}`);
+  log("舊版 payload 仍回 mode", json?.mode === "offline-mock" || json?.mode === "live", `mode=${json?.mode}`);
 }
 
 const failed = results.filter((r) => !r.ok);

@@ -111,6 +111,8 @@ export interface BehavioralTelemetry {
   viewedDocuments: string[];
   /** 是否對 Marcus 的樂觀數據提出質疑 */
   questionedAuthority: boolean;
+  /** 是否與法務顧問 David 互動確認合規風險 */
+  consultedLegal?: boolean;
   /** 是否在 45 秒內冷靜回覆 VP 彈窗 */
   respondedToVpOnTime: boolean | null;
   vpResponseText?: string;
@@ -139,6 +141,54 @@ export interface EvaluationDimensions {
   upwardCommunication: number;
 }
 
+/** 透明評分準則：單一維度的其中一個等級 */
+export interface RubricLevelDescriptor {
+  level: 1 | 2 | 3 | 4 | 5;
+  /** 例如「初階（盲從風險）」「專家（全面風控）」 */
+  label: string;
+  /** 例如 "85 - 100" */
+  scoreRange: string;
+  /** 具體可衡量的行為標準描述 */
+  criteria: string;
+}
+
+export interface RubricDimension {
+  key: EvaluationDimensionKey;
+  title: string;
+  description: string;
+  /** 例如 "30%" */
+  weight: string;
+  levels: RubricLevelDescriptor[];
+}
+
+/** 4 個評估維度的鍵值 */
+export type EvaluationDimensionKey =
+  | "criticalVerification"
+  | "crossReferencing"
+  | "pressureResilience"
+  | "upwardCommunication";
+
+/** 逐維度「升等指導」：現況定位 → 差距 → 實操範例 */
+export interface DimensionCoaching {
+  key: EvaluationDimensionKey;
+  title: string;
+  score: number;
+  achievedLevel: 1 | 2 | 3 | 4 | 5;
+  /** 系統觀察到的實際行為證據 */
+  evidenceObserved: string;
+  /** 如何從當前等級升至下一等級的具體做法 */
+  howToLevelUp: string;
+}
+
+/** 遺漏的關鍵步驟與考量 */
+export interface MissedStepItem {
+  id: string;
+  stepTitle: string;
+  category: "verification" | "stakeholder" | "risk_control" | "communication";
+  whyItMatters: string;
+  actionableFix: string;
+}
+
 export interface EvaluationResult {
   overallScore: number;
   grade: Grade;
@@ -146,6 +196,10 @@ export interface EvaluationResult {
   executiveFeedback: string;
   strengths: string[];
   blindSpots: string[];
+  /** 逐維度升等指導（教授反饋迭代新增） */
+  dimensionCoaching: DimensionCoaching[];
+  /** 遺漏的關鍵步驟清單（教授反饋迭代新增） */
+  missedSteps: MissedStepItem[];
   /** 行為軌跡覆盤 */
   xray: XRayItem[];
   /** 漏洞解析：中欄文件裡被埋設的邏輯陷阱 */
@@ -196,6 +250,50 @@ export interface Scenario {
   documents: WorkDocument[];
   timeline: TimelineEvent[];
   decisionOptions: { value: FinalDecision; label: string; description: string }[];
-  /** 顧問式提示，只在中欄空白或右欄出現 */
+  /** 開場任務簡報（Mission Brief 內容） */
   openingBrief: string;
+}
+
+/** 送給 /api/npc-chat 的單則歷史訊息（多輪對話記憶） */
+export interface NpcChatHistoryEntry {
+  sender: "user" | "npc";
+  content: string;
+  timestamp: string;
+}
+
+/** 送給 /api/npc-chat 的戰情室即時狀態 */
+export interface NpcChatSimulationContext {
+  remainingSeconds: number;
+  unlockedDocIds: string[];
+  pressureLevel: number;
+}
+
+export interface NpcChatRequest {
+  ping?: boolean;
+  npcId: NpcId;
+  userMessage: string;
+  chatHistory: NpcChatHistoryEntry[];
+  simulationContext: NpcChatSimulationContext;
+  locale?: string;
+}
+
+export interface NpcChatResponse {
+  reply: string;
+  unlockDocumentId: string | null;
+  isLiveAi: boolean;
+  warningNotice?: string;
+  npcId: NpcId;
+  mode: "live" | "offline-mock";
+  locale: string;
+  questionedAuthority?: boolean;
+  at: string;
+}
+
+export interface NpcChatPingResponse {
+  ok: boolean;
+  isLiveAi: boolean;
+  source: "browser" | "env" | "none";
+  model?: string;
+  warningNotice?: string;
+  status?: number;
 }

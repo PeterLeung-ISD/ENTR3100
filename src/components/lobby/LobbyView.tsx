@@ -8,22 +8,25 @@ import {
   Brain,
   Building2,
   Check,
+  ClipboardCheck,
   FileWarning,
   Gauge,
+  GraduationCap,
+  Layers,
   Lock,
   MessageSquare,
   Radar,
   RotateCcw,
   ShieldAlert,
-  Sparkles,
   Timer,
-  X,
 } from "lucide-react";
 
 import LanguageToggle from "@/components/ui/LanguageToggle";
+import { RubricModal } from "@/components/shared/RubricModal";
 import { getScenarioCatalog } from "@/data/scenarios";
+import { getScoringRubric } from "@/data/scoringRubric";
 import type { LobbyCopy } from "@/lib/copy/lobby";
-import type { ScenarioSummary } from "@/types/simulation";
+import type { RubricDimension, ScenarioSummary } from "@/types/simulation";
 import { useLocale } from "@/lib/LocaleProvider";
 
 const PILLAR_ICONS = [ShieldAlert, Timer, Radar, MessageSquare];
@@ -31,7 +34,7 @@ const WHY_ICONS = [BadgeCheck, Brain, FileWarning];
 
 const DIFFICULTY_TONE: Record<string, string> = {
   "高壓進階": "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]",
-  "High pressure": "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]",
+  "High-pressure advanced": "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]",
 };
 
 function difficultyClass(value: string) {
@@ -45,17 +48,11 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
   const { c, locale } = useLocale();
   const t = c.lobby;
   const missions = useMemo(() => getScenarioCatalog(locale), [locale]);
-  const [specsOpen, setSpecsOpen] = useState(false);
+  const rubric = useMemo(() => getScoringRubric(locale), [locale]);
+  const live = missions.find((mission) => mission.status === "live");
+  const liveId = live?.id ?? "nexus-launch-crisis";
+  const [rubricOpen, setRubricOpen] = useState(false);
   const [resetNote, setResetNote] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!specsOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSpecsOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [specsOpen]);
 
   useEffect(() => {
     if (!resetNote) return;
@@ -105,18 +102,18 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
             <a href="#missions" className="text-[13px] font-medium text-muted transition-colors hover:text-navy">
               {t.nav.missions}
             </a>
-            <a href="#method" className="text-[13px] font-medium text-muted transition-colors hover:text-navy">
-              {t.nav.method}
-            </a>
             <a href="#framework" className="text-[13px] font-medium text-muted transition-colors hover:text-navy">
               {t.nav.framework}
+            </a>
+            <a href="#method" className="text-[13px] font-medium text-muted transition-colors hover:text-navy">
+              {t.nav.method}
             </a>
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              onClick={() => setSpecsOpen(true)}
+              onClick={() => setRubricOpen(true)}
               aria-label={t.nav.dimensions}
               title={t.nav.dimensions}
               className="inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-medium text-muted transition-colors hover:bg-canvas hover:text-navy"
@@ -135,7 +132,7 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
             </button>
             <LanguageToggle />
             <Link
-              href={`/simulation/${missions[0]?.id ?? "nexus-launch-crisis"}`}
+              href={`/simulation/${liveId}`}
               className="inline-flex items-center gap-1.5 rounded-lg bg-cobalt px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-cobalt-hover"
             >
               {t.nav.start}
@@ -158,7 +155,7 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
       {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
         <div className="grid items-center gap-10 lg:grid-cols-5 lg:gap-12">
-          <div className="lg:col-span-3">
+          <div className="min-w-0 lg:col-span-3">
             <p className="inline-flex items-center gap-2 rounded-full border border-hair bg-surface px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
               <span className={`size-1.5 rounded-full ${liveAi ? "bg-unlocked" : "bg-warn"}`} aria-hidden="true" />
               {t.hero.eyebrow}
@@ -174,18 +171,20 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
-                href={`/simulation/${missions[0]?.id ?? "nexus-launch-crisis"}`}
+                href={`/simulation/${liveId}`}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-cobalt px-5 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-cobalt-hover"
               >
                 {t.hero.primaryCta}
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
-              <a
-                href="#method"
+              <button
+                type="button"
+                onClick={() => setRubricOpen(true)}
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-hair-strong bg-surface px-5 py-3 text-[14px] font-semibold text-navy transition-colors hover:bg-canvas"
               >
+                <ClipboardCheck className="size-4 text-cobalt" aria-hidden="true" />
                 {t.hero.secondaryCta}
-              </a>
+              </button>
             </div>
 
             <dl className="mt-9 grid max-w-xl grid-cols-3 gap-4 border-t border-hair pt-6">
@@ -201,7 +200,7 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
           </div>
 
           {/* Cockpit preview */}
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <div className="overflow-hidden rounded-xl border border-[#232D42] bg-[#111622] shadow-lg">
               <div className="flex items-center justify-between gap-3 border-b border-[#232D42] px-4 py-2.5">
                 <span className="flex items-center gap-1.5">
@@ -295,41 +294,36 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
         </div>
       </section>
 
-      {/* ── Mission bento ──────────────────────────────────────────── */}
-      <section id="missions" className="border-t border-hair bg-surface">
-        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cobalt">{t.missions.eyebrow}</p>
-            <h2 className="mt-2 font-display text-[24px] font-bold tracking-tight text-navy sm:text-[28px]">
-              {t.missions.title}
-            </h2>
-            <p className="mt-2 text-[14px] leading-relaxed text-muted">{t.missions.lead}</p>
-          </div>
+      {/* ── Flagship scenario ──────────────────────────────────────── */}
+      {live ? (
+        <section id="missions" className="border-t border-hair bg-surface">
+          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+            <div className="max-w-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cobalt">{t.flagship.eyebrow}</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+                {t.flagship.title}
+              </h2>
+              <p className="mt-2 text-[14px] leading-relaxed text-muted">{t.flagship.lead}</p>
+            </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-            {missions.map((mission, index) => (
-              <MissionCard
-                key={mission.id}
-                mission={mission}
-                flagship={index === 0}
-                liveAi={liveAi}
-                t={t}
-              />
-            ))}
-          </div>
+            <div className="mt-8">
+              <FlagshipCard mission={live} t={t} rubric={rubric} liveAi={liveAi} />
+            </div>
 
-          <p className="mt-6 flex items-center gap-2 text-[12px] text-muted">
-            <Building2 className="size-4" aria-hidden="true" />
-            {t.missions.audience}
-          </p>
-        </div>
-      </section>
+            {/* 低調的擴充預告：單行條狀，不做卡片格 */}
+            <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-dashed border-hair-strong px-4 py-3 text-[12.5px] leading-snug text-muted">
+              <Layers className="mt-0.5 size-4 shrink-0 text-muted/80" aria-hidden="true" />
+              <p className="min-w-0">{t.teaser}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* ── Framework ──────────────────────────────────────────────── */}
       <section id="framework" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         <div className="max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cobalt">{t.pillars.eyebrow}</p>
-          <h2 className="mt-2 font-display text-[24px] font-bold tracking-tight text-navy sm:text-[28px]">
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
             {t.pillars.title}
           </h2>
           <p className="mt-2 text-[14px] leading-relaxed text-muted">{t.pillars.lead}</p>
@@ -354,9 +348,9 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
       <section id="method" className="border-t border-hair bg-surface">
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cobalt">{t.why.eyebrow}</p>
-              <h2 className="mt-2 font-display text-[24px] font-bold tracking-tight text-navy sm:text-[28px]">
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
                 {t.why.title}
               </h2>
               <p className="mt-4 text-[14px] leading-[1.75] text-muted">{t.why.paragraph1}</p>
@@ -380,7 +374,7 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
               </ul>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 {t.why.flowEyebrow}
               </p>
@@ -405,27 +399,6 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
         </div>
       </section>
 
-      {/* ── CTA ────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="rounded-2xl bg-navy px-6 py-10 sm:px-10">
-          <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
-            <div className="max-w-2xl">
-              <h2 className="font-display text-[22px] font-bold leading-snug tracking-tight text-white sm:text-[26px]">
-                {t.cta.title}
-              </h2>
-              <p className="mt-3 text-[13.5px] leading-[1.7] text-[#CBD5E1]">{t.cta.lead}</p>
-            </div>
-            <Link
-              href={`/simulation/${missions[0]?.id ?? "nexus-launch-crisis"}`}
-              className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-cobalt px-5 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-cobalt-hover"
-            >
-              {t.cta.button}
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
       {/* ── Footer ─────────────────────────────────────────────────── */}
       <footer className="border-t border-hair bg-surface">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
@@ -437,181 +410,129 @@ export function LobbyView({ liveAi }: { liveAi: boolean }) {
         </div>
       </footer>
 
-      {/* ── Scoring dimensions modal ───────────────────────────────── */}
-      {specsOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-navy/45 p-4 sm:items-center">
-          <button
-            type="button"
-            aria-label={t.nav.dimensionsClose}
-            className="absolute inset-0 cursor-default"
-            onClick={() => setSpecsOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={t.dimensions.title}
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-hair bg-surface shadow-xl"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-hair px-5 py-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cobalt">
-                  {t.dimensions.eyebrow}
-                </p>
-                <h2 className="mt-1 font-display text-[17px] font-bold leading-snug text-navy">
-                  {t.dimensions.title}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSpecsOpen(false)}
-                aria-label={t.nav.dimensionsClose}
-                className="grid size-8 shrink-0 place-items-center rounded-lg border border-hair text-muted transition-colors hover:bg-canvas hover:text-navy"
-              >
-                <X className="size-4" aria-hidden="true" />
-              </button>
-            </div>
-            <ul className="max-h-[60vh] space-y-3 overflow-y-auto px-5 py-4 scroll-thin-light">
-              {t.dimensions.items.map((item) => (
-                <li key={item.title} className="rounded-lg border border-hair bg-canvas px-3.5 py-3">
-                  <p className="text-[13px] font-semibold text-navy">{item.title}</p>
-                  <p className="mt-1 text-[12.5px] leading-[1.65] text-muted">{item.copy}</p>
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-col gap-3 border-t border-hair px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[11.5px] leading-snug text-muted">{t.nav.dimensionsNote}</p>
-              <button
-                type="button"
-                onClick={() => setSpecsOpen(false)}
-                className="shrink-0 rounded-lg bg-cobalt px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-cobalt-hover"
-              >
-                {t.nav.dimensionsClose}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <RubricModal open={rubricOpen} onClose={() => setRubricOpen(false)} />
     </div>
   );
 }
 
-function MissionCard({
+function FlagshipCard({
   mission,
-  flagship,
-  liveAi,
   t,
+  rubric,
+  liveAi,
 }: {
   mission: ScenarioSummary;
-  flagship: boolean;
-  liveAi: boolean;
   t: LobbyCopy;
+  rubric: RubricDimension[];
+  liveAi: boolean;
 }) {
-  const live = mission.status === "live";
-
-  if (flagship && live) {
-    return (
-      <article className="flex flex-col overflow-hidden rounded-xl border border-hair border-l-4 border-l-cobalt bg-surface shadow-sm transition-shadow hover:shadow-md">
-        <div className="flex flex-1 flex-col p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                <Building2 className="size-3.5" aria-hidden="true" />
-                {mission.company}
-                <span className="text-hair-strong" aria-hidden="true">
-                  /
-                </span>
-                {mission.industry}
-              </p>
-              <h3 className="mt-2 font-display text-[18px] font-bold leading-snug text-navy">
-                {mission.title}
-              </h3>
-            </div>
-            <span className="tabular-telemetry shrink-0 rounded-md bg-navy px-2 py-1 text-[10.5px] font-bold tracking-wide text-white">
-              {t.missions.duration}
+  return (
+    <article className="overflow-hidden rounded-2xl border border-hair border-l-4 border-l-cobalt bg-surface shadow-sm transition-shadow hover:shadow-md">
+      <div className="grid lg:grid-cols-5">
+        {/* LEFT — scenario identity + scoring + CTA */}
+        <div className="flex min-w-0 flex-col p-5 sm:p-7 lg:col-span-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#A7F3D0] bg-[#ECFDF5] px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#047857]">
+              <span className="size-1.5 rounded-full bg-unlocked" aria-hidden="true" />
+              {t.flagship.status}
             </span>
-          </div>
-
-          <p className="mt-2.5 text-[13px] leading-[1.65] text-muted">{mission.tagline}</p>
-
-          <div className="mt-4 flex flex-wrap items-center gap-1.5">
-            <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${difficultyClass(mission.difficulty)}`}>
+            <span className="tabular-telemetry inline-flex items-center gap-1.5 rounded-md bg-navy px-2.5 py-1 text-[10.5px] font-bold tracking-wide text-white">
+              <Timer className="size-3.5" aria-hidden="true" />
+              {t.flagship.telemetry(mission.durationMinutes)}
+            </span>
+            <span className={`rounded-full border px-2.5 py-1 text-[10.5px] font-semibold ${difficultyClass(mission.difficulty)}`}>
               {mission.difficulty}
             </span>
-            {mission.skills.map((skill) => (
-              <span
-                key={skill}
-                className="rounded-full border border-hair bg-canvas px-2 py-0.5 text-[10.5px] font-medium text-muted"
-              >
-                {skill}
-              </span>
-            ))}
           </div>
 
-          <p className="mt-4 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted">
-            <Sparkles className="mt-0.5 size-3.5 shrink-0 text-cobalt" aria-hidden="true" />
-            {t.missions.flagshipNote}
+          <p className="mt-5 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+            <Building2 className="size-3.5 shrink-0" aria-hidden="true" />
+            <span className="text-navy">{mission.company}</span>
+            <span className="text-hair-strong" aria-hidden="true">
+              /
+            </span>
+            <span>{mission.industry}</span>
           </p>
 
-          <div className="mt-auto pt-5">
+          <h3 className="mt-2 break-words font-display text-[21px] font-bold leading-snug tracking-tight text-navy sm:text-[25px]">
+            {mission.title}
+          </h3>
+          <p className="mt-2.5 text-[13.5px] leading-[1.7] text-muted">{mission.tagline}</p>
+
+          <div className="mt-5 rounded-lg border border-hair bg-canvas px-3.5 py-2.5">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted">
+              {t.flagship.roleLabel}
+            </p>
+            <p className="mt-0.5 break-words text-[13px] font-semibold leading-snug text-navy">
+              {t.flagship.roleValue}
+            </p>
+          </div>
+
+          <div className="mt-5">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted">
+              {t.flagship.rubricLabel}
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {rubric.map((dimension) => (
+                <li
+                  key={dimension.key}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-hair bg-surface px-2.5 py-1 text-[11px] font-medium text-navy"
+                >
+                  {dimension.title}
+                  <span className="tabular-telemetry rounded-sm bg-[#EFF6FF] px-1 py-0.5 text-[10px] font-bold text-cobalt">
+                    {dimension.weight}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-auto pt-6">
             <Link
               href={`/simulation/${mission.id}`}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-cobalt px-4 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-cobalt-hover"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-cobalt px-4 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-cobalt-hover"
             >
-              {t.missions.enter}
+              {t.flagship.cta}
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
             <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted">
               <span className={`size-1.5 rounded-full ${liveAi ? "bg-unlocked" : "bg-warn"}`} aria-hidden="true" />
-              {liveAi ? "LIVE AI · DeepSeek" : "OFFLINE DEMO"}
-              <span className="text-hair-strong" aria-hidden="true">
-                ·
-              </span>
-              <span className="tabular-telemetry">{mission.durationMinutes} min</span>
+              {liveAi ? t.flagship.engineLive : t.flagship.engineOffline}
             </p>
           </div>
         </div>
-      </article>
-    );
-  }
 
-  return (
-    <article className="flex flex-col rounded-xl border border-dashed border-hair-strong bg-white/70 p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted/80">
-            <Building2 className="size-3.5" aria-hidden="true" />
-            {mission.company}
-            <span className="text-hair-strong" aria-hidden="true">
-              /
-            </span>
-            {mission.industry}
+        {/* RIGHT — four-stage flow preview */}
+        <div className="flex min-w-0 flex-col border-t border-hair bg-canvas p-5 sm:p-7 lg:col-span-2 lg:border-l lg:border-t-0">
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted">
+            {t.flagship.flowLabel}
           </p>
-          <h3 className="mt-2 font-display text-[17px] font-bold leading-snug text-navy/70">{mission.title}</h3>
+
+          <ol className="relative mt-4 space-y-4">
+            <span
+              className="absolute bottom-3 left-3.5 top-3 w-px bg-hair-strong"
+              aria-hidden="true"
+            />
+            {t.flagship.flow.map((step) => (
+              <li key={step.step} className="relative flex gap-3">
+                <span className="tabular-telemetry relative z-10 grid size-7 shrink-0 place-items-center rounded-full border border-cobalt/40 bg-[#EFF6FF] text-[10.5px] font-bold text-cobalt">
+                  {step.step}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold leading-snug text-navy">{step.title}</span>
+                  <span className="mt-0.5 block text-[12px] leading-[1.6] text-muted">{step.copy}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-auto pt-5">
+            <div className="flex gap-2.5 rounded-lg border border-hair bg-surface px-3.5 py-3">
+              <GraduationCap className="mt-0.5 size-4 shrink-0 text-cobalt" aria-hidden="true" />
+              <p className="min-w-0 text-[11.5px] leading-[1.65] text-muted">{t.flagship.debriefNote}</p>
+            </div>
+          </div>
         </div>
-        <span className="shrink-0 rounded-full bg-[#E2E8F0] px-2 py-0.5 text-[10.5px] font-semibold text-muted">
-          {t.missions.comingSoon}
-        </span>
-      </div>
-      <p className="mt-2.5 text-[13px] leading-[1.65] text-muted/80">{mission.tagline}</p>
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        {mission.skills.map((skill) => (
-          <span
-            key={skill}
-            className="rounded-full border border-hair bg-white px-2 py-0.5 text-[10.5px] font-medium text-muted/80"
-          >
-            {skill}
-          </span>
-        ))}
-      </div>
-      <div className="mt-auto pt-5">
-        <button
-          type="button"
-          disabled
-          className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-hair bg-[#F1F5F9] px-4 py-2.5 text-[13px] font-semibold text-muted/70"
-        >
-          <Lock className="size-3.5" aria-hidden="true" />
-          {t.missions.locked}
-        </button>
       </div>
     </article>
   );
