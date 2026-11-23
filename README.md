@@ -59,6 +59,7 @@ node scripts/e2e-check.mjs http://localhost:4310  # 也可以指定別的埠
 node scripts/ui-guide-check.mjs    # 21 項：導覽自動彈出、倒數暫停、3 步驟、開始後計時、Rubric 開關
 node scripts/ui-report-check.mjs   # 20 項：升等指南、遺漏步驟、Rubric 對照表展開與「你目前在此」標記、證書列印範圍
 node scripts/ui-submit-check.mjs   # 14 項：矮視窗可完成導覽、未填寫提交有提示、確認面板可點、送出後跳轉報告、行動版流程
+node scripts/ui-locale-check.mjs   # 10 項：模擬中途切換中／英，時間軸訊息、事件列、文件標題同步換語言且可逆
 ```
 
 三者都用 headless Edge 以 CDP 實際點擊驗證，並把截圖寫到 `docs/ui-shots/`。
@@ -129,6 +130,7 @@ npm run clean -- --dry-run   # 只看會刪什麼，不真的刪
 - 劇本資料分兩份：`src/data/flagshipScenario.ts`（中文）與 `src/data/flagshipScenarioEn.ts`（英文），由 `src/data/scenarios.ts` 依語言選用；英文模式的 NPC 仍聽得懂中文提問（關鍵詞取兩邊聯集），所以學生混用語言也能解鎖文件。
 - 文案字典在 `src/lib/copy/`（`common` / `lobby` / `cockpit` / `report`），`en` 的型別是 `typeof zh`，漏譯會在 `tsc` 直接報錯。
 - 報告若以另一種語言開啟，會自動用同一份行為遙測重新生成評語（保留原 `verificationId`）。
+- **模擬進行中切換語言**：時間軸訊息、動態事件列、VP 緊急彈窗、文件與 KPI 會即時換成新語言（還原草稿後也一樣）；學生自己打的訊息與 AI 回覆屬於對話歷史，保留原語言（翻譯對話反而誤導）。自動化驗證見 `node scripts/ui-locale-check.mjs`。
 
 ---
 
@@ -235,6 +237,7 @@ scripts/      e2e-check.mjs         # 端到端自檢（中英文共 69 項）
               ui-guide-check.mjs    # 行前導覽 + 倒數暫停 + Rubric 開關（21 項）
               ui-report-check.mjs   # 升等指南 / 遺漏步驟 / Rubric 對照表 / 列印範圍（20 項）
               ui-submit-check.mjs   # 提交簽核按鈕不被遮擋、驗證提示、送出跳轉（14 項）
+              ui-locale-check.mjs   # 模擬中途切換中／英的即時一致性（10 項）
               ui-audit.mjs          # 版面/色彩/圖示稽核 + 截圖（headless Edge）
               clean.mjs             # 清快取（.next / .pnpm-store）
 docs/ui-shots/                      # ui-audit 與各自檢腳本產出的截圖與 audit.json

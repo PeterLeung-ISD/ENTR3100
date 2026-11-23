@@ -203,6 +203,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
           timestamp: simTime(event.triggerAtSecondsRemaining),
           isUrgent: event.type === "urgent_modal" || event.type === "system",
           attachedDocId: event.payload.docId,
+          eventId: event.id,
         });
         if ((event.type === "message" || event.type === "unlock_doc") && npcId !== activeNpc) {
           setUnread((prev) => ({ ...prev, [npcId]: (prev[npcId] ?? 0) + 1 }));
@@ -252,6 +253,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
         sender: "system",
         content: copyRef.current.messages.vpTimeoutOffline,
         timestamp: simTime(remaining),
+        systemKey: "vpTimeout",
       });
       return;
     }
@@ -341,6 +343,8 @@ export default function Cockpit({ scenario }: CockpitProps) {
           timestamp: message.timestamp,
           isUrgent: message.isUrgent,
           attachedDocId: message.attachedDocId,
+          eventId: message.eventId,
+          systemKey: message.systemKey,
         })),
         telemetry,
         savedAt: Date.now(),
@@ -348,6 +352,60 @@ export default function Cockpit({ scenario }: CockpitProps) {
     }, 700);
     return () => window.clearTimeout(timer);
   }, [remaining, unlockedDocIds, messages, telemetry, scenario.id]);
+
+  /**
+   * 切換語言時，把「系統自動產生」的內容重新套用當前語言：
+   * - 時間軸事件訊息（eventId）→ 用當前語系的 scenario.timeline 文本
+   * - 系統提示訊息（systemKey）→ 用當前語系的 copy
+   * - 動態事件列（activity）→ 用當前語系的 timeline label
+   * - VP 緊急彈窗（modal）→ 用當前語系的 modalTitle / modalPrompt
+   * 學生輸入與 AI 回覆屬於對話歷史，保留原語言（翻譯對話會誤導）。
+   */
+  useEffect(() => {
+    const bubbleText = (message: ChatMessage): string | undefined => {
+      if (message.eventId) {
+        return scenario.timeline.find((event) => event.id === message.eventId)?.payload.message;
+      }
+      if (message.systemKey === "vpTimeout") return copy.messages.vpTimeoutOffline;
+      if (message.systemKey === "vpReplied") return copy.messages.vpRepliedOffline;
+      if (message.systemKey === "sendFailed") return copy.messages.sendFailed;
+      return undefined;
+    };
+
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((message) => {
+        const text = bubbleText(message);
+        if (!text || text === message.content) return message;
+        changed = true;
+        return { ...message, content: text };
+      });
+      return changed ? next : prev;
+    });
+
+    setActivity((prev) => {
+      let changed = false;
+      const next = prev.map((item) => {
+        const label = scenario.timeline.find((event) => event.id === item.id)?.label;
+        if (!label || label === item.label) return item;
+        changed = true;
+        return { ...item, label };
+      });
+      return changed ? next : prev;
+    });
+
+    // VP 緊急彈窗若正在顯示，同樣換語言（倒數不受影響）。
+    setModal((prev) => {
+      if (!prev) return prev;
+      const event = scenario.timeline.find((item) => item.id === prev.eventId);
+      if (!event) return prev;
+      const title = event.payload.modalTitle ?? copy.urgent.defaultTitle;
+      const prompt = event.payload.modalPrompt ?? "";
+      if (title === prev.title && prompt === prev.prompt) return prev;
+      return { ...prev, title, prompt };
+    });
+    // copy 為模組層級常數，locale 改變即代表語系切換。
+  }, [copy, locale, scenario.timeline]);
 
   // ---------------------------------------------------------------------
   // 互動
@@ -506,6 +564,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
           sender: "npc",
           content: copyRef.current.messages.sendFailed,
           timestamp: simTime(remaining),
+          systemKey: "sendFailed",
         });
         pushToast(copyRef.current.toasts.communicationsFailed, "warn");
       } finally {
@@ -552,6 +611,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
         sender: "system",
         content: copyRef.current.messages.vpRepliedOffline,
         timestamp: simTime(remaining),
+        systemKey: "vpReplied",
       });
       pushToast(copyRef.current.toasts.repliedToVp, "success");
       setRunning(true);

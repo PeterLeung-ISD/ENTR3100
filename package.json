@@ -14,7 +14,8 @@
     "ui:ai": "node scripts/ui-ai-check.mjs",
     "ui:guide": "node scripts/ui-guide-check.mjs",
     "ui:report": "node scripts/ui-report-check.mjs",
-    "ui:submit": "node scripts/ui-submit-check.mjs"
+    "ui:submit": "node scripts/ui-submit-check.mjs",
+    "ui:locale": "node scripts/ui-locale-check.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.73.0",

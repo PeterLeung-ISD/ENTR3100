@@ -26,6 +26,10 @@ export interface SimulationDraft {
     timestamp: string;
     isUrgent?: boolean;
     attachedDocId?: string;
+    /** 時間軸事件來源：還原草稿或切換語言時用來重新取得當前語系文本 */
+    eventId?: string;
+    /** 系統文案來源：同上 */
+    systemKey?: "vpTimeout" | "vpReplied" | "sendFailed";
   }[];
   telemetry: BehavioralTelemetry;
   savedAt: number;

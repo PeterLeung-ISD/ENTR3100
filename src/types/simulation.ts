@@ -26,6 +26,8 @@ export interface NpcProfile {
   channelTopic: string;
 }
 
+export type BubbleSystemKey = "vpTimeout" | "vpReplied" | "sendFailed";
+
 export interface ChatMessage {
   id: string;
   npcId: NpcId;
@@ -36,6 +38,10 @@ export interface ChatMessage {
   isUrgent?: boolean;
   /** 點擊可直接跳轉至中欄對應文件 */
   attachedDocId?: string;
+  /** 由時間軸事件自動產生的訊息：切換語言時用此 id 重新取文本 */
+  eventId?: string;
+  /** 由系統文案產生的訊息：切換語言時用此 key 重新取文本 */
+  systemKey?: BubbleSystemKey;
 }
 
 export type DocumentType = "deck" | "spreadsheet" | "memo" | "raw_log";
