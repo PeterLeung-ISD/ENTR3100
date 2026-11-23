@@ -5,6 +5,7 @@ import { makeVerificationId } from "@/lib/ids";
 import type { Locale } from "@/lib/i18n";
 import type {
   BehavioralTelemetry,
+  EvaluationDimensionKey,
   EvaluationDimensions,
   EvaluationResult,
   FinalDecision,
@@ -14,11 +15,21 @@ import type {
   XRayItem,
 } from "@/types/simulation";
 
+export interface DimensionCoachingOverride {
+  evidenceObserved?: string;
+  howToLevelUp?: string;
+}
+
 export interface SemanticAssessment {
   upwardCommunication: number;
+  /** Live AI 啟用時，同步為其餘三個維度提供語意評分 */
+  criticalVerification?: number;
+  crossReferencing?: number;
+  pressureResilience?: number;
   executiveFeedback: string;
   strengths: string[];
   blindSpots: string[];
+  dimensionCoaching?: Partial<Record<EvaluationDimensionKey, DimensionCoachingOverride>>;
 }
 
 export interface RuleAssessment {
@@ -129,26 +140,64 @@ export function computeRuleDimensions(telemetry: BehavioralTelemetry, locale: Lo
   };
 }
 
-/** 60% 客觀規則 + 40% 語義深度，得出最終四維分數。 */
+/**
+ * 融合規則基準與語意評分：
+ * - Live AI（具備全四維語意分數）：40% 客觀規則基準 + 60% AI 語意深度，並套用公平性硬護欄。
+ * - 離線 Mock（僅向上溝通語意分）：維持 60% 規則 + 40% 語意於向上溝通，其餘三維使用規則分。
+ */
 export function mergeDimensions(
   rule: EvaluationDimensions,
   semantic: SemanticAssessment | null,
+  telemetry?: BehavioralTelemetry,
 ): EvaluationDimensions {
-  const upward = semantic
-    ? Math.round(rule.upwardCommunication * 0.6 + clamp(semantic.upwardCommunication) * 0.4)
-    : rule.upwardCommunication;
+  const hasFullSemantic =
+    semantic !== null &&
+    typeof semantic.criticalVerification === "number" &&
+    typeof semantic.crossReferencing === "number" &&
+    typeof semantic.pressureResilience === "number";
 
-  const blended: EvaluationDimensions = {
-    criticalVerification: rule.criticalVerification,
-    pressureResilience: rule.pressureResilience,
-    crossReferencing: rule.crossReferencing,
-    upwardCommunication: clamp(upward),
-  };
+  const blend = (ruleScore: number, aiScore: number | undefined, ruleWeight: number) =>
+    typeof aiScore === "number" && Number.isFinite(aiScore)
+      ? clamp(ruleScore * ruleWeight + clamp(aiScore) * (1 - ruleWeight))
+      : clamp(ruleScore);
 
-  // 若語義分析發現理據其實空洞（例如只有情緒字眼），最多扣 8 分
-  if (semantic && semantic.upwardCommunication < 45 && blended.criticalVerification > 88) {
+  const blended: EvaluationDimensions = hasFullSemantic
+    ? {
+        criticalVerification: blend(rule.criticalVerification, semantic.criticalVerification, 0.4),
+        pressureResilience: blend(rule.pressureResilience, semantic.pressureResilience, 0.4),
+        crossReferencing: blend(rule.crossReferencing, semantic.crossReferencing, 0.4),
+        upwardCommunication: blend(rule.upwardCommunication, semantic.upwardCommunication, 0.4),
+      }
+    : {
+        criticalVerification: rule.criticalVerification,
+        pressureResilience: rule.pressureResilience,
+        crossReferencing: rule.crossReferencing,
+        upwardCommunication: semantic
+          ? blend(rule.upwardCommunication, semantic.upwardCommunication, 0.6)
+          : rule.upwardCommunication,
+      };
+
+  // 離線模式保留空洞理據微調
+  if (!hasFullSemantic && semantic && semantic.upwardCommunication < 45 && blended.criticalVerification > 88) {
     blended.criticalVerification -= 6;
   }
+
+  // 公平性硬規則護欄（無論 AI 如何給分，關鍵失誤絕不放水）
+  if (telemetry) {
+    if (!telemetry.unlockedRawLogs && telemetry.finalDecision === "approve_full") {
+      blended.criticalVerification = Math.min(blended.criticalVerification, 35);
+    }
+    if (telemetry.respondedToVpOnTime === false) {
+      blended.pressureResilience = Math.min(blended.pressureResilience, 70);
+    }
+    if (
+      new Set(telemetry.viewedDocuments).size <= 1 &&
+      new Set(telemetry.contactedNpcs).size <= 1
+    ) {
+      blended.crossReferencing = Math.min(blended.crossReferencing, 45);
+    }
+  }
+
   return blended;
 }
 
@@ -377,7 +426,7 @@ export function assembleEvaluation(args: {
   const locale: Locale = args.locale ?? "zh";
   const zh = locale !== "en";
   const rule = computeRuleDimensions(telemetry, locale);
-  const dimensions = mergeDimensions(rule.dimensions, semantic);
+  const dimensions = mergeDimensions(rule.dimensions, semantic, telemetry);
   const overallScore = weightedOverall(dimensions);
 
   const flaggedBlindSpots: string[] = [];
@@ -403,6 +452,25 @@ export function assembleEvaluation(args: {
         ? "忽略了法務合規備忘錄中的履約賠償風險。"
         : "Ignored the contractual liability risk described in the legal & compliance memo.",
     );
+
+  const baseCoaching = buildDimensionCoaching({
+    telemetry,
+    dimensions,
+    locale,
+    citedFigures: rule.citedFigures,
+  });
+
+  const dimensionCoaching = baseCoaching.map((item) => {
+    const override = semantic?.dimensionCoaching?.[item.key];
+    if (!override) return item;
+    const evidence = override.evidenceObserved?.trim();
+    const howTo = override.howToLevelUp?.trim();
+    return {
+      ...item,
+      evidenceObserved: evidence && evidence.length >= 12 ? evidence : item.evidenceObserved,
+      howToLevelUp: howTo && howTo.length >= 15 ? howTo : item.howToLevelUp,
+    };
+  });
 
   return {
     overallScore,
@@ -441,12 +509,7 @@ export function assembleEvaluation(args: {
             ],
     xray: buildXRay(telemetry, locale),
     trapAnalysis: buildTrapAnalysis(locale),
-    dimensionCoaching: buildDimensionCoaching({
-      telemetry,
-      dimensions,
-      locale,
-      citedFigures: rule.citedFigures,
-    }),
+    dimensionCoaching,
     missedSteps: buildMissedSteps(telemetry, locale),
     mode,
     locale,

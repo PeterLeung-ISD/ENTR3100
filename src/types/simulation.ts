@@ -272,6 +272,12 @@ export interface NpcChatSimulationContext {
   remainingSeconds: number;
   unlockedDocIds: string[];
   pressureLevel: number;
+  viewedDocIds?: string[];
+  contactedNpcs?: NpcId[];
+  questionedAuthority?: boolean;
+  vpReplied?: boolean;
+  vpResponseSummary?: string;
+  isVpUrgentReply?: boolean;
 }
 
 export interface NpcChatRequest {
@@ -288,6 +294,7 @@ export interface NpcChatResponse {
   unlockDocumentId: string | null;
   isLiveAi: boolean;
   warningNotice?: string;
+  fallbackReason?: string;
   npcId: NpcId;
   mode: "live" | "offline-mock";
   locale: string;
@@ -299,6 +306,7 @@ export interface NpcChatPingResponse {
   ok: boolean;
   isLiveAi: boolean;
   source: "browser" | "env" | "none";
+  serverManaged?: boolean;
   model?: string;
   warningNotice?: string;
   status?: number;

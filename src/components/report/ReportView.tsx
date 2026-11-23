@@ -45,6 +45,7 @@ import {
 } from "@/data/scoringRubric";
 import { getScenario } from "@/data/flagshipScenario";
 import { useLocale } from "@/lib/LocaleProvider";
+import { aiHeaders, loadAiConfig } from "@/lib/aiConfig";
 import {
   clearAttempt,
   loadAttempt,
@@ -165,7 +166,10 @@ export default function ReportView({ scenarioId }: { scenarioId: string }) {
       try {
         const response = await fetch("/api/evaluate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...aiHeaders(loadAiConfig()),
+          },
           body: JSON.stringify({
             scenarioId,
             candidateName: snapshot.candidateName,

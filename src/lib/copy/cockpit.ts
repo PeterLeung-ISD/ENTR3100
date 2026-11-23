@@ -32,6 +32,8 @@ const zh = {
     aiOffline: "點擊設定 API Key（目前為離線模式）",
     aiDetecting: "偵測 AI 連線中",
     aiSettingsAria: "開啟 API 設定",
+    aiServerManaged: "DeepSeek AI 即時驅動",
+    aiServerManagedTitle: "已由系統連線 DeepSeek AI，可直接對話",
     guide: "操作導覽",
     rubric: "評分標準",
   },
@@ -179,6 +181,7 @@ const zh = {
     reset: "模擬已重置，倒數重新開始。",
     submitFailed: "結算失敗，請重試。",
     vpSkipped: "你略過了 VP 的提問。",
+    rateLimited: "訊息傳送過於頻繁，請稍候再試。",
   },
   validation: {
     decisionRequired: "請先選擇一個簽核方案。",
@@ -230,6 +233,8 @@ const en: CockpitCopy = {
     aiOffline: "Set your API key (offline mode)",
     aiDetecting: "Checking AI connection",
     aiSettingsAria: "Open API settings",
+    aiServerManaged: "Live DeepSeek AI",
+    aiServerManagedTitle: "Connected to DeepSeek AI via server — ready to chat",
     guide: "How to use",
     rubric: "Scoring rubric",
   },
@@ -383,6 +388,7 @@ const en: CockpitCopy = {
     reset: "Simulation reset — countdown restarted.",
     submitFailed: "Submission failed. Please try again.",
     vpSkipped: "You skipped the VP's question.",
+    rateLimited: "Too many messages sent — please wait a moment and try again.",
   },
   validation: {
     decisionRequired: "Select a sign-off option first.",

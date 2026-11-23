@@ -1,12 +1,16 @@
 /**
- * DeepSeek API 薄封裝：8 秒超時、JSON 模式、失敗即回傳 null 交由 Mock 降級。
- * 支援兩種憑證來源 —— 請求標頭（網頁端設定）優先，其次伺服器環境變數。
+ * DeepSeek API 封裝：支援分級逾時（相容 Netlify 免費版 10 秒限制）、短暫錯誤快速重試、
+ * 結構化錯誤回報，以及兩種憑證模式：
+ * 1. 伺服器鎖定模式（推薦線上部署）：Netlify 設定 DEEPSEEK_API_KEY 後，使用者免填金鑰即可直接用。
+ * 2. 本機開發／自備金鑰模式：伺服器未設金鑰（或 ALLOW_CLIENT_API_KEY=true）時，允許標頭金鑰。
  */
 
 export const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 export const DEEPSEEK_ENDPOINT = `${DEEPSEEK_BASE_URL}/chat/completions`;
 export const DEEPSEEK_MODEL = "deepseek-chat";
-const TIMEOUT_MS = 8000;
+const DEFAULT_TIMEOUT_MS = 8500;
+const MIN_TIMEOUT_MS = 4000;
+const MAX_TIMEOUT_MS = 25000;
 const MIN_KEY_LENGTH = 8;
 
 export interface AiRuntimeConfig {
@@ -17,26 +21,68 @@ export interface AiRuntimeConfig {
 
 export type AiConfigSource = "browser" | "env" | "none";
 
-export function hasDeepSeekKey(): boolean {
-  return envConfig().apiKey.length > 0;
+export type DeepSeekErrorKind =
+  | "missing-key"
+  | "invalid-key"
+  | "insufficient-balance"
+  | "rate-limited"
+  | "timeout"
+  | "network"
+  | "server-error"
+  | "empty-response";
+
+export type DeepSeekCallOutcome =
+  | { ok: true; content: string; mode: "live" }
+  | { ok: false; error: DeepSeekErrorKind; status?: number; detail?: string };
+
+const trimSlash = (value: string) => value.replace(/\/+$/, "");
+
+function clampTimeout(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_TIMEOUT_MS;
+  return Math.max(MIN_TIMEOUT_MS, Math.min(MAX_TIMEOUT_MS, Math.round(value)));
+}
+
+function defaultTimeoutMs(): number {
+  const raw = process.env.DEEPSEEK_TIMEOUT_MS;
+  if (!raw) return DEFAULT_TIMEOUT_MS;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? clampTimeout(parsed) : DEFAULT_TIMEOUT_MS;
 }
 
 function envConfig(): AiRuntimeConfig {
   return {
     apiKey: (process.env.DEEPSEEK_API_KEY ?? "").trim(),
-    baseUrl: (process.env.DEEPSEEK_BASE_URL ?? DEEPSEEK_BASE_URL).trim(),
-    model: (process.env.DEEPSEEK_MODEL ?? DEEPSEEK_MODEL).trim(),
+    baseUrl: trimSlash((process.env.DEEPSEEK_BASE_URL ?? DEEPSEEK_BASE_URL).trim() || DEEPSEEK_BASE_URL),
+    model: (process.env.DEEPSEEK_MODEL ?? DEEPSEEK_MODEL).trim() || DEEPSEEK_MODEL,
   };
 }
 
-const trimSlash = (value: string) => value.replace(/\/+$/, "");
+export function hasDeepSeekKey(): boolean {
+  return envConfig().apiKey.length >= MIN_KEY_LENGTH;
+}
 
-/** 由請求標頭解析連線設定；前端未提供時退回環境變數。 */
+/**
+ * 當伺服器端已設定 DEEPSEEK_API_KEY 且未允許前端覆寫時，進入伺服器託管模式：
+ * 所有請求強制採用伺服器環境變數金鑰，確保金鑰不會外洩且端點不可被當成任意代理。
+ */
+export function isServerManagedAi(): boolean {
+  return hasDeepSeekKey() && process.env.ALLOW_CLIENT_API_KEY !== "true";
+}
+
+/** 由請求標頭解析連線設定；伺服器託管模式下永遠優先採用環境變數。 */
 export function resolveAiConfig(headers: Headers): {
   config: AiRuntimeConfig;
   source: AiConfigSource;
 } {
   const env = envConfig();
+
+  if (isServerManagedAi()) {
+    return {
+      config: env,
+      source: "env",
+    };
+  }
+
   const headerKey = (headers.get("x-deepseek-api-key") ?? "").trim();
   const headerBase = (headers.get("x-deepseek-base-url") ?? "").trim();
   const headerModel = (headers.get("x-deepseek-model") ?? "").trim();
@@ -54,17 +100,13 @@ export function resolveAiConfig(headers: Headers): {
 
   if (env.apiKey.length >= MIN_KEY_LENGTH) {
     return {
-      config: {
-        apiKey: env.apiKey,
-        baseUrl: trimSlash(env.baseUrl || DEEPSEEK_BASE_URL),
-        model: env.model || DEEPSEEK_MODEL,
-      },
+      config: env,
       source: "env",
     };
   }
 
   return {
-    config: { apiKey: "", baseUrl: trimSlash(env.baseUrl || DEEPSEEK_BASE_URL), model: env.model || DEEPSEEK_MODEL },
+    config: { apiKey: "", baseUrl: env.baseUrl, model: env.model },
     source: "none",
   };
 }
@@ -72,7 +114,7 @@ export function resolveAiConfig(headers: Headers): {
 /** 伺服器可公開的預設值（不含金鑰）。 */
 export function publicAiDefaults(): { baseUrl: string; model: string } {
   const env = envConfig();
-  return { baseUrl: trimSlash(env.baseUrl || DEEPSEEK_BASE_URL), model: env.model || DEEPSEEK_MODEL };
+  return { baseUrl: env.baseUrl, model: env.model };
 }
 
 export interface ChatTurn {
@@ -85,15 +127,29 @@ export interface DeepSeekResult {
   mode: "live";
 }
 
-export async function callDeepSeek(
-  messages: ChatTurn[],
-  options: { temperature?: number; json?: boolean; config?: AiRuntimeConfig; maxTokens?: number } = {},
-): Promise<DeepSeekResult | null> {
-  const config = options.config ?? envConfig();
-  if (!config.apiKey) return null;
+export interface DeepSeekCallOptions {
+  temperature?: number;
+  json?: boolean;
+  config?: AiRuntimeConfig;
+  maxTokens?: number;
+  timeoutMs?: number;
+}
 
+function mapHttpStatusToError(status: number): DeepSeekErrorKind {
+  if (status === 401 || status === 403) return "invalid-key";
+  if (status === 402) return "insufficient-balance";
+  if (status === 429) return "rate-limited";
+  return "server-error";
+}
+
+async function runChatAttempt(
+  messages: ChatTurn[],
+  config: AiRuntimeConfig,
+  options: DeepSeekCallOptions,
+  timeoutMs: number,
+): Promise<DeepSeekCallOutcome> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(`${trimSlash(config.baseUrl)}/chat/completions`, {
@@ -113,32 +169,92 @@ export async function callDeepSeek(
       cache: "no-store",
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      return {
+        ok: false,
+        error: mapHttpStatusToError(res.status),
+        status: res.status,
+        detail: detail.slice(0, 200) || `HTTP ${res.status}`,
+      };
+    }
+
     const data = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
     };
     const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-    return { content, mode: "live" };
-  } catch {
-    return null;
+    if (!content || !content.trim()) {
+      return { ok: false, error: "empty-response", status: res.status };
+    }
+    return { ok: true, content, mode: "live" };
+  } catch (error) {
+    const aborted = error instanceof Error && error.name === "AbortError";
+    return {
+      ok: false,
+      error: aborted ? "timeout" : "network",
+      detail: error instanceof Error ? error.message.slice(0, 160) : undefined,
+    };
   } finally {
     clearTimeout(timer);
   }
 }
 
+export async function callDeepSeekDetailed(
+  messages: ChatTurn[],
+  options: DeepSeekCallOptions = {},
+): Promise<DeepSeekCallOutcome> {
+  const config = options.config ?? envConfig();
+  if (!config.apiKey || config.apiKey.trim().length < MIN_KEY_LENGTH) {
+    return { ok: false, error: "missing-key" };
+  }
+
+  const budgetMs = clampTimeout(options.timeoutMs ?? defaultTimeoutMs());
+  const startedAt = Date.now();
+
+  let outcome = await runChatAttempt(messages, config, options, budgetMs);
+
+  if (!outcome.ok && (outcome.error === "network" || outcome.error === "server-error")) {
+    const elapsed = Date.now() - startedAt;
+    const remaining = budgetMs - elapsed;
+    if (elapsed < 2000 && remaining >= 4000) {
+      outcome = await runChatAttempt(messages, config, options, remaining);
+    }
+  }
+
+  if (!outcome.ok) {
+    console.warn("[DeepSeek]", {
+      error: outcome.error,
+      status: outcome.status,
+      detail: outcome.detail,
+    });
+  }
+
+  return outcome;
+}
+
+export async function callDeepSeek(
+  messages: ChatTurn[],
+  options: DeepSeekCallOptions = {},
+): Promise<DeepSeekResult | null> {
+  const outcome = await callDeepSeekDetailed(messages, options);
+  return outcome.ok ? { content: outcome.content, mode: "live" } : null;
+}
+
 export interface DeepSeekProbe {
   ok: boolean;
   status?: number;
+  error?: DeepSeekErrorKind;
   message?: string;
 }
 
 /** 設定彈窗「測試連線」用：送一則極短的請求，回報可行的錯誤原因。 */
 export async function probeDeepSeek(config: AiRuntimeConfig): Promise<DeepSeekProbe> {
-  if (!config.apiKey) return { ok: false, message: "missing-key" };
+  if (!config.apiKey || config.apiKey.trim().length < MIN_KEY_LENGTH) {
+    return { ok: false, error: "missing-key", message: "missing-key" };
+  }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), defaultTimeoutMs());
 
   try {
     const res = await fetch(`${trimSlash(config.baseUrl)}/chat/completions`, {
@@ -159,15 +275,18 @@ export async function probeDeepSeek(config: AiRuntimeConfig): Promise<DeepSeekPr
 
     if (res.ok) return { ok: true, status: res.status };
 
+    const errorKind = mapHttpStatusToError(res.status);
     const detail = await res.text().catch(() => "");
     return {
       ok: false,
       status: res.status,
+      error: errorKind,
       message: detail.slice(0, 220) || `HTTP ${res.status}`,
     };
   } catch (error) {
     const aborted = error instanceof Error && error.name === "AbortError";
-    return { ok: false, message: aborted ? "timeout" : "network" };
+    const errorKind: DeepSeekErrorKind = aborted ? "timeout" : "network";
+    return { ok: false, error: errorKind, message: errorKind };
   } finally {
     clearTimeout(timer);
   }

@@ -26,6 +26,7 @@ interface TopControlBarProps {
   pressure: number;
   running: boolean;
   mode: "live" | "offline-mock" | "detecting";
+  serverManaged?: boolean;
   onToggleRun: () => void;
   onSkipMinute: () => void;
   onNextEvent: () => void;
@@ -45,6 +46,7 @@ export default function TopControlBar({
   pressure,
   running,
   mode,
+  serverManaged = false,
   onToggleRun,
   onSkipMinute,
   onNextEvent,
@@ -100,17 +102,28 @@ export default function TopControlBar({
             {scenarioTitle || copy.fallbackTitle}
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] leading-none">
-            <button
-              type="button"
-              onClick={onOpenApiSettings}
-              aria-label={`${copy.aiSettingsAria} — ${engineLabel}`}
-              title={copy.aiSettingsAria}
-              className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-left transition ${engineChip} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-calm`}
-            >
-              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${engineDot}`} aria-hidden="true" />
-              <span className={`truncate font-semibold ${engineTone}`}>{engineLabel}</span>
-              <KeyRound className="h-2.5 w-2.5 shrink-0 text-cockpit-muted" aria-hidden="true" />
-            </button>
+            {serverManaged && mode === "live" ? (
+              <span
+                title={copy.aiServerManagedTitle}
+                aria-label={`${copy.engineLive} — ${copy.aiServerManagedTitle}`}
+                className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-unlocked/40 bg-unlocked/10 px-2 py-0.5 text-left"
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-unlocked" aria-hidden="true" />
+                <span className="truncate font-semibold text-unlocked">{copy.aiServerManaged}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenApiSettings}
+                aria-label={`${copy.aiSettingsAria} — ${engineLabel}`}
+                title={copy.aiSettingsAria}
+                className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-left transition ${engineChip} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-calm`}
+              >
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${engineDot}`} aria-hidden="true" />
+                <span className={`truncate font-semibold ${engineTone}`}>{engineLabel}</span>
+                <KeyRound className="h-2.5 w-2.5 shrink-0 text-cockpit-muted" aria-hidden="true" />
+              </button>
+            )}
             <span className="hidden shrink-0 text-cockpit-line sm:inline" aria-hidden="true">
               |
             </span>

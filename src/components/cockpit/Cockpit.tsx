@@ -98,6 +98,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
   const [aiConfig, setAiConfig] = useState<AiConfig>(() => ({ ...DEFAULT_AI_CONFIG }));
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const [serverHasKey, setServerHasKey] = useState(false);
+  const [serverManaged, setServerManaged] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeNpc, setActiveNpc] = useState<NpcId>("marcus");
@@ -129,10 +130,15 @@ export default function Cockpit({ scenario }: CockpitProps) {
   const wasRunningRef = useRef(false);
   // 事件／toast 回呼保持穩定 identity，但永遠取用目前語言的文案。
   const copyRef = useRef(copy);
+  const activeNpcRef = useRef<NpcId>(activeNpc);
 
   useEffect(() => {
     copyRef.current = copy;
   }, [copy]);
+
+  useEffect(() => {
+    activeNpcRef.current = activeNpc;
+  }, [activeNpc]);
 
   const npcName = useCallback(
     (id?: NpcId) => scenario.npcs.find((npc) => npc.id === id)?.name ?? "",
@@ -281,10 +287,15 @@ export default function Cockpit({ scenario }: CockpitProps) {
     setAiConfig(local);
     fetch("/api/npc-chat")
       .then((res) => res.json())
-      .then((data: { mode?: string; hasServerKey?: boolean }) => {
+      .then((data: { mode?: string; hasServerKey?: boolean; serverManaged?: boolean }) => {
         if (cancelled) return;
         setServerHasKey(Boolean(data.hasServerKey));
-        setMode(hasLocalAiKey(local) || data.mode === "live" ? "live" : "offline-mock");
+        setServerManaged(Boolean(data.serverManaged));
+        setMode(
+          data.serverManaged || hasLocalAiKey(local) || data.mode === "live"
+            ? "live"
+            : "offline-mock",
+        );
       })
       .catch(() => {
         if (cancelled) setMode(hasLocalAiKey(local) ? "live" : "offline-mock");
@@ -520,12 +531,22 @@ export default function Cockpit({ scenario }: CockpitProps) {
             simulationContext: {
               remainingSeconds: remaining,
               unlockedDocIds,
+              viewedDocIds: telemetry.viewedDocuments,
+              contactedNpcs: uniq([...telemetry.contactedNpcs, npcId]),
+              questionedAuthority: telemetry.questionedAuthority,
+              vpReplied: telemetry.respondedToVpOnTime === true,
+              vpResponseSummary: (telemetry.vpResponseText ?? "").slice(0, 200),
               pressureLevel: Math.round(pressureLevel),
             },
             scenarioId: scenario.id,
             locale,
           }),
         });
+        if (res.status === 429) {
+          const rateBody = (await res.json().catch(() => null)) as { error?: string } | null;
+          pushToast(rateBody?.error ?? copyRef.current.toasts.rateLimited, "warn");
+          return;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as {
           reply: string;
@@ -555,7 +576,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
         if (data.warningNotice) {
           pushToast(data.warningNotice, "warn");
         }
-        if (npcId !== activeNpc) {
+        if (npcId !== activeNpcRef.current) {
           setUnread((prev) => ({ ...prev, [npcId]: (prev[npcId] ?? 0) + 1 }));
         }
       } catch {
@@ -591,32 +612,122 @@ export default function Cockpit({ scenario }: CockpitProps) {
   const replyToVp = useCallback(
     (text: string) => {
       const trimmed = text.trim();
+      const replyContent = trimmed || copyRef.current.messages.vpFallbackReply;
+      const timestamp = simTime(remaining);
+      const nextContacted = uniq([...telemetry.contactedNpcs, "sarah" as NpcId]);
+
       setModal(null);
       setTelemetry((prev) => ({
         ...prev,
         respondedToVpOnTime: true,
         vpResponseText: trimmed || copyRef.current.messages.vpEmptyResponse,
         totalMessagesSent: prev.totalMessagesSent + 1,
-        contactedNpcs: uniq([...prev.contactedNpcs, "sarah" as NpcId]),
+        contactedNpcs: nextContacted,
       }));
       pushMessage({
         npcId: "sarah",
         sender: "user",
-        content: trimmed || copyRef.current.messages.vpFallbackReply,
-        timestamp: simTime(remaining),
+        content: replyContent,
+        timestamp,
         isUrgent: true,
-      });
-      pushMessage({
-        npcId: "sarah",
-        sender: "system",
-        content: copyRef.current.messages.vpRepliedOffline,
-        timestamp: simTime(remaining),
-        systemKey: "vpReplied",
       });
       pushToast(copyRef.current.toasts.repliedToVp, "success");
       setRunning(true);
+
+      const chatHistory: NpcChatHistoryEntry[] = messages
+        .filter((message) => message.npcId === "sarah" && message.sender !== "system")
+        .slice(-8)
+        .map((message) => ({
+          sender: message.sender === "user" ? "user" : "npc",
+          content: message.content,
+          timestamp: message.timestamp,
+        }));
+
+      const elapsed = total - remaining;
+      const fired = new Set(activity.map((item) => item.id));
+      const deltaSum = scenario.timeline.reduce(
+        (acc, event) => acc + (fired.has(event.id) ? (event.payload.pressureDelta ?? 0) : 0),
+        0,
+      );
+      const pressureLevel = Math.min(100, 12 + (elapsed / total) * 35 + deltaSum * 0.7);
+
+      void (async () => {
+        try {
+          const res = await fetch("/api/npc-chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...aiHeaders(loadAiConfig()),
+            },
+            body: JSON.stringify({
+              npcId: "sarah",
+              userMessage: replyContent,
+              chatHistory,
+              simulationContext: {
+                remainingSeconds: remaining,
+                unlockedDocIds,
+                viewedDocIds: telemetry.viewedDocuments,
+                contactedNpcs: nextContacted,
+                questionedAuthority: telemetry.questionedAuthority,
+                vpReplied: true,
+                vpResponseSummary: replyContent.slice(0, 200),
+                pressureLevel: Math.round(pressureLevel),
+                isVpUrgentReply: true,
+              },
+              scenarioId: scenario.id,
+              locale,
+            }),
+          });
+          if (res.ok) {
+            const data = (await res.json()) as {
+              reply?: string;
+              isLiveAi?: boolean;
+              mode?: "live" | "offline-mock";
+            };
+            const live = data.isLiveAi ?? data.mode === "live";
+            if (live && data.reply?.trim()) {
+              pushMessage({
+                npcId: "sarah",
+                sender: "npc",
+                content: data.reply.trim(),
+                timestamp: simTime(remaining),
+                isUrgent: true,
+              });
+              if (activeNpcRef.current !== "sarah") {
+                setUnread((prev) => ({ ...prev, sarah: (prev.sarah ?? 0) + 1 }));
+              }
+              return;
+            }
+          }
+        } catch {
+          /* fallback below */
+        }
+
+        pushMessage({
+          npcId: "sarah",
+          sender: "system",
+          content: copyRef.current.messages.vpRepliedOffline,
+          timestamp,
+          systemKey: "vpReplied",
+        });
+      })();
     },
-    [pushMessage, pushToast, remaining, simTime],
+    [
+      activity,
+      locale,
+      messages,
+      pushMessage,
+      pushToast,
+      remaining,
+      scenario.id,
+      scenario.timeline,
+      simTime,
+      telemetry.contactedNpcs,
+      telemetry.questionedAuthority,
+      telemetry.viewedDocuments,
+      total,
+      unlockedDocIds,
+    ],
   );
 
   const skipMinute = useCallback(() => {
@@ -707,7 +818,10 @@ export default function Cockpit({ scenario }: CockpitProps) {
       try {
         const res = await fetch("/api/evaluate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...aiHeaders(loadAiConfig()),
+          },
           body: JSON.stringify({
             scenarioId: scenario.id,
             candidateName: loadCandidateName(),
@@ -810,6 +924,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
         pressure={pressure}
         running={running}
         mode={mode}
+        serverManaged={serverManaged}
         onToggleRun={() => setRunning((prev) => !prev)}
         onSkipMinute={skipMinute}
         onNextEvent={nextEvent}
@@ -918,7 +1033,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
       </nav>
 
       <ApiSettingsModal
-        open={aiSettingsOpen}
+        open={aiSettingsOpen && !serverManaged}
         config={aiConfig}
         serverHasKey={serverHasKey}
         onClose={() => setAiSettingsOpen(false)}
@@ -930,7 +1045,7 @@ export default function Cockpit({ scenario }: CockpitProps) {
         open={Boolean(modal)}
         title={modal?.title ?? ""}
         prompt={modal?.prompt ?? ""}
-        senderName="Sarah Lin"
+        senderName={scenario.npcs.find((npc) => npc.id === "sarah")?.name ?? "Sarah Wu"}
         senderRole={copy.urgent.senderRole}
         secondsLeft={modal?.secondsLeft ?? 0}
         totalSeconds={modal?.totalSeconds ?? 45}
@@ -972,7 +1087,11 @@ export default function Cockpit({ scenario }: CockpitProps) {
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-cockpit-base/90 backdrop-blur">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-cobalt/30 border-t-cobalt" />
           <p className="text-[12px] text-cockpit-text">{copy.shell.analyzing}</p>
-          <p className="text-[10px] text-cockpit-muted">{copy.shell.analysisSplit(60, 40)}</p>
+          <p className="text-[10px] text-cockpit-muted">
+            {mode === "live"
+              ? copy.shell.analysisSplit(40, 60)
+              : copy.shell.analysisSplit(60, 40)}
+          </p>
         </div>
       )}
 
