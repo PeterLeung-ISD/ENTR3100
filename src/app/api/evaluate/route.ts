@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         { role: "system", content: system },
         { role: "user", content: prompt },
       ],
-      { temperature: 0.3, json: true, config, maxTokens: 680 },
+      { temperature: 0.3, json: true, config, maxTokens: 1800 },
     );
 
     if (outcome.ok) {

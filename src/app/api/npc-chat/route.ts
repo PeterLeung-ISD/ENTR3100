@@ -252,7 +252,7 @@ export async function POST(req: Request) {
 
   // --- 2. DeepSeek 真實角色生成（失敗則平滑降級） ---------------------------
   if (config.apiKey) {
-    const history = normalizeHistory(body.chatHistory, message, locale);
+    const { history, priorUnansweredUser } = normalizeHistory(body.chatHistory, message, locale);
     const viewedDocIds = sanitizeDocIds(body.simulationContext?.viewedDocIds);
     const contactedNpcs = sanitizeNpcIds(body.simulationContext?.contactedNpcs);
     const scenarioContext: EnrichedContext = {
@@ -270,7 +270,7 @@ export async function POST(req: Request) {
       isVpUrgentReply: Boolean(body.simulationContext?.isVpUrgentReply),
     };
 
-    const userContent =
+    const currentUserLine =
       scenarioContext.isVpUrgentReply && npcId === "sarah"
         ? locale === "en"
           ? `[45-second urgent executive popup reply from the student right before you enter the boardroom]: "${message}"`
@@ -278,6 +278,10 @@ export async function POST(req: Request) {
         : locale === "en"
           ? `Student's Slack DM: "${message}"`
           : `學生傳來的 Slack 訊息：「${message}」`;
+
+    const userContent = priorUnansweredUser
+      ? `${priorUnansweredUser}\n${currentUserLine}`
+      : currentUserLine;
 
     const messages: ChatTurn[] = [
       {
@@ -297,11 +301,13 @@ export async function POST(req: Request) {
       },
     ];
 
+    // 預設不強開 response_format: json_object（避免部分中轉站／deepseek-flash 在多輪對話吐空字串），
+    // 靠系統提示與寬鬆／截斷 JSON 解析確保結構與回覆完整。
     const outcome = await callDeepSeekDetailed(messages, {
       temperature: 0.72,
-      json: true,
+      json: process.env.DEEPSEEK_FORCE_JSON === "true",
       config,
-      maxTokens: 260,
+      maxTokens: 900,
     });
 
     if (outcome.ok) {
@@ -317,11 +323,19 @@ export async function POST(req: Request) {
           questionedAuthority: Boolean(parsed?.questionedAuthority),
         });
       }
-      // 模型回傳純文字而非 JSON：直接採用文字內容並搭配關鍵字保底
-      const text = stripFence(outcome.content.trim());
-      if (text.length > 3) {
-        return finish(text, keywordUnlock, true);
+
+      // 若 JSON 被截斷（例如 {"reply": "...），安全抽出對話文字，絕不把原始 JSON 印給學生
+      const partialReply = extractReplyFromPartialJson(outcome.content);
+      if (partialReply && partialReply.length > 3) {
+        return finish(partialReply, keywordUnlock, true);
       }
+
+      // 模型直接回傳純文字而非 JSON：過濾思維鏈與圍欄後採用
+      const plain = stripFence(outcome.content);
+      if (plain.length > 3 && !looksLikeBrokenJson(plain)) {
+        return finish(plain, keywordUnlock, true);
+      }
+
       return finish(
         fallback.reply,
         keywordUnlock ?? fallback.unlockDocumentId ?? null,
@@ -329,9 +343,17 @@ export async function POST(req: Request) {
         {
           warningNotice: warningFor("empty-response", locale),
           fallbackReason: "empty-response",
+          fallbackDetail: "HTTP 200 (unusable-reply)",
         },
       );
     }
+
+    const fallbackDetail = [
+      outcome.status ? `HTTP ${outcome.status}` : outcome.error,
+      outcome.detail ? `(${outcome.detail.slice(0, 120)})` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     return finish(
       fallback.reply,
@@ -340,7 +362,7 @@ export async function POST(req: Request) {
       {
         warningNotice: warningFor(outcome.error, locale),
         fallbackReason: outcome.error,
-        fallbackDetail: outcome.status ? `HTTP ${outcome.status}` : outcome.error,
+        fallbackDetail,
       },
     );
   }
@@ -373,9 +395,38 @@ function sanitizeNpcIds(raw: unknown): NpcId[] {
 
 function stripFence(raw: string) {
   return raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
     .replace(/^\s*```(?:json)?/i, "")
     .replace(/```\s*$/i, "")
     .trim();
+}
+
+function looksLikeBrokenJson(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.startsWith("{") && /"reply"|"unlockDocumentId"|"questionedAuthority"/i.test(trimmed);
+}
+
+function extractReplyFromPartialJson(raw: string): string | null {
+  if (!raw) return null;
+  const cleaned = stripFence(raw);
+  const full = parseJsonLoose<{ reply?: string }>(cleaned);
+  if (typeof full?.reply === "string" && full.reply.trim()) {
+    return full.reply.trim();
+  }
+  const match = cleaned.match(/^\s*\{[\s\S]*?"reply"\s*:\s*"((?:\\.|[^"\\])*)/);
+  if (!match) return null;
+  const escaped = match[1].replace(/\\$/, "");
+  try {
+    return String(JSON.parse(`"${escaped}"`)).trim() || null;
+  } catch {
+    return (
+      escaped
+        .replace(/\\n/g, "\n")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\")
+        .trim() || null
+    );
+  }
 }
 
 /** 只允許 NPC 解鎖自己負責的文件，且已解鎖就不再重送。 */
@@ -394,24 +445,65 @@ function normalizeHistory(
   raw: NpcChatHistoryEntry[] | undefined,
   message: string,
   locale: Locale,
-): ChatTurn[] {
-  if (!Array.isArray(raw) || raw.length === 0) return [];
-  const turns: ChatTurn[] = [];
-  for (const entry of raw.slice(-MAX_HISTORY_TURNS)) {
-    const content = typeof entry?.content === "string" ? entry.content.trim() : "";
-    if (!content) continue;
-    if (content === message && entry.sender === "user") continue;
-    turns.push({
-      role: entry.sender === "npc" ? "assistant" : "user",
-      content:
-        entry.sender === "npc"
-          ? content
-          : locale === "en"
-            ? `Student: ${content}`
-            : `學生：${content}`,
+): { history: ChatTurn[]; priorUnansweredUser: string | null } {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { history: [], priorUnansweredUser: null };
+  }
+
+  const slice = raw.slice(-MAX_HISTORY_TURNS);
+  const merged: ChatTurn[] = [];
+
+  for (let i = 0; i < slice.length; i += 1) {
+    const entry = slice[i];
+    const rawContent = typeof entry?.content === "string" ? entry.content.trim() : "";
+    if (!rawContent) continue;
+
+    // 僅略過緊鄰在最後且完全重複的同一句使用者發言
+    if (i === slice.length - 1 && entry.sender === "user" && rawContent === message) {
+      continue;
+    }
+
+    const role: "user" | "assistant" = entry.sender === "npc" ? "assistant" : "user";
+    const cleanedNpc =
+      role === "assistant"
+        ? extractReplyFromPartialJson(rawContent) ?? stripFence(rawContent)
+        : rawContent;
+    if (!cleanedNpc) continue;
+
+    const formatted =
+      role === "assistant"
+        ? cleanedNpc
+        : locale === "en"
+          ? `Student: ${cleanedNpc}`
+          : `學生：${cleanedNpc}`;
+
+    const prev = merged[merged.length - 1];
+    if (prev && prev.role === role) {
+      prev.content = `${prev.content}\n${formatted}`;
+    } else {
+      merged.push({ role, content: formatted });
+    }
+  }
+
+  // 確保 system 之後第一則永遠是 user，符合多數中轉模型的嚴格輪替要求
+  if (merged.length > 0 && merged[0].role === "assistant") {
+    merged.unshift({
+      role: "user",
+      content: locale === "en" ? "(Opened the chat channel)" : "（打開了通訊頻道）",
     });
   }
-  return turns;
+
+  // 若歷史末尾仍為 user（例如上一輪失敗未獲回覆），併入本輪 userContent，保持嚴格交替
+  let priorUnansweredUser: string | null = null;
+  if (merged.length > 0 && merged[merged.length - 1].role === "user") {
+    const last = merged.pop()!;
+    const currentFormatted = locale === "en" ? `Student: ${message}` : `學生：${message}`;
+    if (last.content !== currentFormatted) {
+      priorUnansweredUser = last.content;
+    }
+  }
+
+  return { history: merged, priorUnansweredUser };
 }
 
 interface EnrichedContext {

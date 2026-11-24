@@ -159,6 +159,40 @@ function mapHttpStatusToError(status: number): DeepSeekErrorKind {
   return "server-error";
 }
 
+function stripThinkingTags(raw: string): string {
+  return raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
+
+function extractMessageContent(message: unknown): { content: string; reasoningLen: number } {
+  if (!message || typeof message !== "object") {
+    return { content: "", reasoningLen: 0 };
+  }
+  const msg = message as { content?: unknown; reasoning_content?: unknown };
+  const reasoningLen =
+    typeof msg.reasoning_content === "string" ? msg.reasoning_content.trim().length : 0;
+
+  let rawContent = "";
+  if (typeof msg.content === "string") {
+    rawContent = msg.content;
+  } else if (Array.isArray(msg.content)) {
+    rawContent = msg.content
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (part && typeof part === "object" && "text" in part) {
+          const t = (part as { text?: unknown }).text;
+          return typeof t === "string" ? t : "";
+        }
+        return "";
+      })
+      .join("");
+  }
+
+  return {
+    content: stripThinkingTags(rawContent),
+    reasoningLen,
+  };
+}
+
 async function runChatAttempt(
   messages: ChatTurn[],
   config: AiRuntimeConfig,
@@ -198,9 +232,13 @@ async function runChatAttempt(
     }
 
     const rawText = await res.text();
-    let data: { choices?: { message?: { content?: string } }[] } | null = null;
+    let data: {
+      choices?: { finish_reason?: string; message?: unknown }[];
+    } | null = null;
     try {
-      data = JSON.parse(rawText) as { choices?: { message?: { content?: string } }[] };
+      data = JSON.parse(rawText) as {
+        choices?: { finish_reason?: string; message?: unknown }[];
+      };
     } catch {
       return {
         ok: false,
@@ -210,9 +248,16 @@ async function runChatAttempt(
       };
     }
 
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content || !content.trim()) {
-      return { ok: false, error: "empty-response", status: res.status };
+    const choice = data?.choices?.[0];
+    const { content, reasoningLen } = extractMessageContent(choice?.message);
+    if (!content) {
+      const reason = choice?.finish_reason ?? "unknown";
+      return {
+        ok: false,
+        error: "empty-response",
+        status: res.status,
+        detail: `finish_reason=${reason}${reasoningLen > 0 ? `, reasoning_len=${reasoningLen}` : ""}`,
+      };
     }
     return { ok: true, content, mode: "live" };
   } catch (error) {
@@ -241,11 +286,21 @@ export async function callDeepSeekDetailed(
 
   let outcome = await runChatAttempt(messages, config, options, budgetMs);
 
-  // 部分中轉站／模型不支援 response_format: json_object（回 400/422），自動移除該參數再試一次
-  if (!outcome.ok && outcome.error === "bad-request" && options.json) {
+  // 中轉站拒絕 response_format 或於 json_object 模式下吐空字串時，移除該參數快速重試一次
+  if (
+    !outcome.ok &&
+    options.json &&
+    (outcome.error === "bad-request" || outcome.error === "empty-response")
+  ) {
     const remaining = budgetMs - (Date.now() - startedAt);
-    if (remaining >= 3500) {
+    if (remaining >= 2500) {
       outcome = await runChatAttempt(messages, config, { ...options, json: false }, remaining);
+    }
+  } else if (!outcome.ok && outcome.error === "empty-response") {
+    const elapsed = Date.now() - startedAt;
+    const remaining = budgetMs - elapsed;
+    if (elapsed < 4500 && remaining >= 2500) {
+      outcome = await runChatAttempt(messages, config, options, remaining);
     }
   } else if (!outcome.ok && (outcome.error === "network" || outcome.error === "server-error")) {
     const elapsed = Date.now() - startedAt;
@@ -343,10 +398,10 @@ export async function probeDeepSeek(config: AiRuntimeConfig): Promise<DeepSeekPr
   }
 }
 
-/** 從模型回覆中抽取 JSON 物件（容忍 ```json 圍欄或前後雜訊）。 */
+/** 從模型回覆中抽取 JSON 物件（容忍 <think> 標籤、```json 圍欄或前後雜訊）。 */
 export function parseJsonLoose<T>(raw: string): T | null {
   if (!raw) return null;
-  const cleaned = raw
+  const cleaned = stripThinkingTags(raw)
     .replace(/^\s*```(?:json)?/i, "")
     .replace(/```\s*$/i, "")
     .trim();
