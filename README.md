@@ -41,10 +41,11 @@ npm run build && npm run start
 
 1. 進入 Netlify 後台 → **Site configuration → Environment variables**。
 2. 新增變數：
-   - **Key**: `DEEPSEEK_API_KEY`（注意：**不可**加 `NEXT_PUBLIC_` 前綴，確保金鑰永遠只留在伺服器端）
-   - **Value**: 填入您的 `sk-...` DeepSeek API Key
+   - **Key**: `DEEPSEEK_API_KEY`（**值**: 您的 `sk-...` API Key；請注意**不可**加 `NEXT_PUBLIC_` 前綴，確保金鑰永遠只留在伺服器端）
+   - **Key**（若使用第三方中轉站，例如 New API）：`DEEPSEEK_BASE_URL`（**值**: 例如 `https://new.itus.cc`，系統會自動補全 `/v1/chat/completions`；若用官方 DeepSeek 則可略過）
    - **Scopes**: 保持預設全選（含 Functions / Runtime）
 3. 前往 **Deploys → Trigger deploy → Clear cache and deploy site** 重新部署一次。
+4. 部署完成後，可在瀏覽器打開 `<您的網址>/api/npc-chat` 快速檢查：若顯示 `"hasServerKey": true` 與正確的 `"endpointUrl"`，即代表後端已接通。
 
 部署生效後：
 - 戰情室頂部會顯示綠色 `DeepSeek AI 即時驅動` 徽章，並**自動隱藏**手動填寫 API Key 的彈窗，避免使用者混淆或接觸金鑰。

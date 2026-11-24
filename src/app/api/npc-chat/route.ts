@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  buildChatCompletionsUrl,
   callDeepSeekDetailed,
   isServerManagedAi,
   parseJsonLoose,
@@ -68,6 +69,7 @@ export async function GET() {
     hasServerKey: source === "env",
     serverManaged: isServerManagedAi(),
     source,
+    endpointUrl: buildChatCompletionsUrl(config.baseUrl),
     defaults: publicAiDefaults(),
   });
 }
@@ -93,6 +95,8 @@ function warningFor(
     "missing-key": "尚未設定 DeepSeek API Key，目前使用離線備援回覆。",
     "invalid-key": "API Key 無效或無權限，已切換離線備援回覆。",
     "insufficient-balance": "DeepSeek API 帳戶餘額不足，已切換離線備援回覆。",
+    "bad-endpoint": "AI 端點路徑錯誤或回傳非 JSON 內容（請確認 Base URL），已切換離線備援回覆。",
+    "bad-request": "AI 服務拒絕請求格式（請檢查模型名稱或參數），已切換離線備援回覆。",
     "rate-limited": "AI 服務請求頻率過高，已切換離線備援回覆。",
     timeout: "AI 回應逾時，已切換離線備援回覆。",
     network: "無法連線到 AI 服務，已切換離線備援回覆。",
@@ -104,6 +108,8 @@ function warningFor(
     "missing-key": "No DeepSeek API key configured — using the offline fallback replies.",
     "invalid-key": "The API key was rejected — switched to offline fallback replies.",
     "insufficient-balance": "The DeepSeek account balance is insufficient — switched to offline fallback replies.",
+    "bad-endpoint": "The AI endpoint returned an unexpected or non-JSON response (check Base URL) — switched to offline fallback replies.",
+    "bad-request": "The AI service rejected the request parameters (check model name) — switched to offline fallback replies.",
     "rate-limited": "The AI service is rate-limited right now — switched to offline fallback replies.",
     timeout: "The AI request timed out — switched to offline fallback replies.",
     network: "Could not reach the AI service — switched to offline fallback replies.",
@@ -225,6 +231,7 @@ export async function POST(req: Request) {
     opts?: {
       warningNotice?: string;
       fallbackReason?: string;
+      fallbackDetail?: string;
       questionedAuthority?: boolean;
     },
   ) =>
@@ -236,6 +243,7 @@ export async function POST(req: Request) {
       mode: isLiveAi ? "live" : "offline-mock",
       ...(opts?.warningNotice ? { warningNotice: opts.warningNotice } : {}),
       ...(opts?.fallbackReason ? { fallbackReason: opts.fallbackReason } : {}),
+      ...(opts?.fallbackDetail ? { fallbackDetail: opts.fallbackDetail } : {}),
       locale,
       questionedAuthority:
         npcId === "marcus" && Boolean(questionsAuthority || opts?.questionedAuthority),
@@ -332,6 +340,7 @@ export async function POST(req: Request) {
       {
         warningNotice: warningFor(outcome.error, locale),
         fallbackReason: outcome.error,
+        fallbackDetail: outcome.status ? `HTTP ${outcome.status}` : outcome.error,
       },
     );
   }

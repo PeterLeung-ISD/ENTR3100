@@ -102,14 +102,33 @@ export default function TopControlBar({
             {scenarioTitle || copy.fallbackTitle}
           </div>
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[10px] leading-none">
-            {serverManaged && mode === "live" ? (
+            {serverManaged ? (
               <span
-                title={copy.aiServerManagedTitle}
-                aria-label={`${copy.engineLive} — ${copy.aiServerManagedTitle}`}
-                className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-unlocked/40 bg-unlocked/10 px-2 py-0.5 text-left"
+                title={mode === "live" ? copy.aiServerManagedTitle : copy.aiServerDegradedTitle}
+                aria-label={
+                  mode === "live"
+                    ? `${copy.engineLive} — ${copy.aiServerManagedTitle}`
+                    : `${copy.engineOffline} — ${copy.aiServerDegradedTitle}`
+                }
+                className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-left ${
+                  mode === "live"
+                    ? "border-unlocked/40 bg-unlocked/10"
+                    : "border-warn/40 bg-warn/10"
+                }`}
               >
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-unlocked" aria-hidden="true" />
-                <span className="truncate font-semibold text-unlocked">{copy.aiServerManaged}</span>
+                <span
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    mode === "live" ? "bg-unlocked" : "bg-warn"
+                  }`}
+                  aria-hidden="true"
+                />
+                <span
+                  className={`truncate font-semibold ${
+                    mode === "live" ? "text-unlocked" : "text-warn"
+                  }`}
+                >
+                  {mode === "live" ? copy.aiServerManaged : copy.aiServerDegraded}
+                </span>
               </span>
             ) : (
               <button

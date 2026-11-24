@@ -295,6 +295,7 @@ export interface NpcChatResponse {
   isLiveAi: boolean;
   warningNotice?: string;
   fallbackReason?: string;
+  fallbackDetail?: string;
   npcId: NpcId;
   mode: "live" | "offline-mock";
   locale: string;

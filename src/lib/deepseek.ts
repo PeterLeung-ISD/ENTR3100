@@ -6,7 +6,7 @@
  */
 
 export const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-export const DEEPSEEK_ENDPOINT = `${DEEPSEEK_BASE_URL}/chat/completions`;
+export const DEEPSEEK_ENDPOINT = `${DEEPSEEK_BASE_URL}/v1/chat/completions`;
 export const DEEPSEEK_MODEL = "deepseek-chat";
 const DEFAULT_TIMEOUT_MS = 8500;
 const MIN_TIMEOUT_MS = 4000;
@@ -25,6 +25,8 @@ export type DeepSeekErrorKind =
   | "missing-key"
   | "invalid-key"
   | "insufficient-balance"
+  | "bad-endpoint"
+  | "bad-request"
   | "rate-limited"
   | "timeout"
   | "network"
@@ -36,6 +38,19 @@ export type DeepSeekCallOutcome =
   | { ok: false; error: DeepSeekErrorKind; status?: number; detail?: string };
 
 const trimSlash = (value: string) => value.replace(/\/+$/, "");
+
+/**
+ * 自動補全 OpenAI 相容端點路徑：
+ * - `https://new.itus.cc` → `https://new.itus.cc/v1/chat/completions`
+ * - `https://new.itus.cc/v1` → `https://new.itus.cc/v1/chat/completions`
+ * - `https://new.itus.cc/v1/chat/completions` → 維持不變
+ */
+export function buildChatCompletionsUrl(baseUrl: string): string {
+  const clean = trimSlash(baseUrl.trim() || DEEPSEEK_BASE_URL);
+  if (/\/chat\/completions$/i.test(clean)) return clean;
+  if (/\/v\d+[a-z0-9_-]*$/i.test(clean)) return `${clean}/chat/completions`;
+  return `${clean}/v1/chat/completions`;
+}
 
 function clampTimeout(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_TIMEOUT_MS;
@@ -138,6 +153,8 @@ export interface DeepSeekCallOptions {
 function mapHttpStatusToError(status: number): DeepSeekErrorKind {
   if (status === 401 || status === 403) return "invalid-key";
   if (status === 402) return "insufficient-balance";
+  if (status === 404) return "bad-endpoint";
+  if (status === 400 || status === 422) return "bad-request";
   if (status === 429) return "rate-limited";
   return "server-error";
 }
@@ -150,9 +167,10 @@ async function runChatAttempt(
 ): Promise<DeepSeekCallOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const url = buildChatCompletionsUrl(config.baseUrl);
 
   try {
-    const res = await fetch(`${trimSlash(config.baseUrl)}/chat/completions`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -179,10 +197,20 @@ async function runChatAttempt(
       };
     }
 
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = data.choices?.[0]?.message?.content;
+    const rawText = await res.text();
+    let data: { choices?: { message?: { content?: string } }[] } | null = null;
+    try {
+      data = JSON.parse(rawText) as { choices?: { message?: { content?: string } }[] };
+    } catch {
+      return {
+        ok: false,
+        error: "bad-endpoint",
+        status: res.status,
+        detail: `Non-JSON response from ${url}`,
+      };
+    }
+
+    const content = data?.choices?.[0]?.message?.content;
     if (!content || !content.trim()) {
       return { ok: false, error: "empty-response", status: res.status };
     }
@@ -213,7 +241,13 @@ export async function callDeepSeekDetailed(
 
   let outcome = await runChatAttempt(messages, config, options, budgetMs);
 
-  if (!outcome.ok && (outcome.error === "network" || outcome.error === "server-error")) {
+  // 部分中轉站／模型不支援 response_format: json_object（回 400/422），自動移除該參數再試一次
+  if (!outcome.ok && outcome.error === "bad-request" && options.json) {
+    const remaining = budgetMs - (Date.now() - startedAt);
+    if (remaining >= 3500) {
+      outcome = await runChatAttempt(messages, config, { ...options, json: false }, remaining);
+    }
+  } else if (!outcome.ok && (outcome.error === "network" || outcome.error === "server-error")) {
     const elapsed = Date.now() - startedAt;
     const remaining = budgetMs - elapsed;
     if (elapsed < 2000 && remaining >= 4000) {
@@ -223,6 +257,7 @@ export async function callDeepSeekDetailed(
 
   if (!outcome.ok) {
     console.warn("[DeepSeek]", {
+      endpoint: buildChatCompletionsUrl(config.baseUrl),
       error: outcome.error,
       status: outcome.status,
       detail: outcome.detail,
@@ -257,7 +292,7 @@ export async function probeDeepSeek(config: AiRuntimeConfig): Promise<DeepSeekPr
   const timer = setTimeout(() => controller.abort(), defaultTimeoutMs());
 
   try {
-    const res = await fetch(`${trimSlash(config.baseUrl)}/chat/completions`, {
+    const res = await fetch(buildChatCompletionsUrl(config.baseUrl), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -273,7 +308,23 @@ export async function probeDeepSeek(config: AiRuntimeConfig): Promise<DeepSeekPr
       cache: "no-store",
     });
 
-    if (res.ok) return { ok: true, status: res.status };
+    if (res.ok) {
+      const rawText = await res.text().catch(() => "");
+      try {
+        const parsed = JSON.parse(rawText) as { choices?: unknown[] };
+        if (Array.isArray(parsed?.choices)) {
+          return { ok: true, status: res.status };
+        }
+      } catch {
+        /* non-JSON 200 HTML page */
+      }
+      return {
+        ok: false,
+        status: res.status,
+        error: "bad-endpoint",
+        message: "bad-endpoint",
+      };
+    }
 
     const errorKind = mapHttpStatusToError(res.status);
     const detail = await res.text().catch(() => "");
